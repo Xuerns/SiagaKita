@@ -30,6 +30,7 @@ interface MapDetailsPanelProps {
   onStartRouteNavigation: () => void;
   onOpenOfflineDownload: () => void;
   isMapOfflineDownloaded: boolean;
+  isGpsActive?: boolean;
 }
 
 export function MapDetailsPanel({
@@ -47,6 +48,7 @@ export function MapDetailsPanel({
   onStartRouteNavigation,
   onOpenOfflineDownload,
   isMapOfflineDownloaded,
+  isGpsActive = false,
 }: MapDetailsPanelProps) {
   const currentSelected = evacuationPoints.find((p) => p.id === selectedPointId) || evacuationPoints[0];
   const normRisk = (riskLevel || "aman").toLowerCase();
@@ -185,13 +187,19 @@ export function MapDetailsPanel({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-bold text-[#17211D]">Titik Evakuasi Terdekat ({selectedArea})</h4>
-            <span className="text-[10px] text-[#929D96]">Terverifikasi BPBD</span>
+            <span className="text-[10px] font-semibold text-[#176B4D]">
+              {isGpsActive ? "🎯 Dari GPS Anda" : "Terverifikasi BPBD"}
+            </span>
           </div>
 
           <div className="space-y-2">
             {evacuationPoints.slice(0, 4).map((pt) => {
               const isSelected = pt.id === (selectedPointId || evacuationPoints[0]?.id);
-              const distText = (pt as any).distance || `${pt.distanceKm ?? 1.5} km`;
+              const distText = typeof pt.distanceKm === "number"
+                ? pt.distanceKm < 1
+                  ? `${Math.round(pt.distanceKm * 1000)} m`
+                  : `${pt.distanceKm} km`
+                : (pt as any).distance || "1.5 km";
 
               return (
                 <div
