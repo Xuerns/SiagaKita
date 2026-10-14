@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary-900: #0F3822;
+  --color-primary-700: #1B5E3A;
+  --color-primary-500: #287F4F;
+  --color-primary-300: #5AC48A;
+  
+  --bg-canvas: #E8ECEB;
+  --bg-app: #FFFFFF;
+  --bg-surface-subtle: #F7F8F9;
+  
+  --border-subtle: #EBEBEB;
+  --border-strong: #1B5E3A;
+  
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-muted: #9CA3AF;
+  --text-on-primary: #FFFFFF;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Pola Garis Diagonal Berarsir (Striped Pattern untuk status pending / proyeksi data) */
+.bg-striped {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #9CA3AF,
+    #9CA3AF 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+.bg-striped-light {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #E5E7EB,
+    #E5E7EB 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+/* Gradasi Hijau Zamrud Khas Donezo / SiagaKita */
+.bg-primary-gradient {
+  background: linear-gradient(145deg, #114227 0%, #267D4D 100%);
+}
+
+.bg-danger-gradient {
+  background: linear-gradient(145deg, #7F1D1D 0%, #DC2626 100%);
+}
+
+.bg-warning-gradient {
+  background: linear-gradient(145deg, #78350F 0%, #D97706 100%);
+}
+
+/* Utilitas font angka stopwatch / metrik agar tidak bergeser */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
 }

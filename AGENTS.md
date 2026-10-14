@@ -6,3 +6,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Rule for implementation
 - Read docs/
+- Never commit .env, and creditials key
