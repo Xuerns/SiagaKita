@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Clock, MapPin, ArrowRight } from "lucide-react";
+import { AlertTriangle, Clock, MapPin, ArrowRight, ShieldCheck } from "lucide-react";
 import { ActiveWarning } from "@/types";
 
 interface WarningCardProps {
@@ -8,26 +8,34 @@ interface WarningCardProps {
 }
 
 export function WarningCard({ warning, onOpenWarning }: WarningCardProps) {
+  const isSafe = warning.level === "Aman";
+
   return (
-    <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between hover:border-[#F9C1C1] transition-all relative overflow-hidden group">
+    <div className={`bg-white rounded-[16px] border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex flex-col justify-between transition-all relative overflow-hidden group ${
+      isSafe ? "border-[#E6EBE8] hover:border-[#CDD7D1]" : "border-[#F9C1C1] hover:border-[#D64545]"
+    }`}>
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#FDECEC] text-[#D64545] flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              isSafe ? "bg-[#E5F5EA] text-[#176B4D]" : "bg-[#FDECEC] text-[#D64545]"
+            }`}>
+              {isSafe ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
             </div>
             <div>
               <span className="text-[11px] font-medium text-[#68756E] block leading-none">
-                Peringatan Aktif
+                {isSafe ? "Peringatan Dini" : "Peringatan Aktif"}
               </span>
-              <span className="text-xs font-semibold text-[#D64545]">
+              <span className={`text-xs font-semibold ${isSafe ? "text-[#176B4D]" : "text-[#D64545]"}`}>
                 {warning.hazardType}
               </span>
             </div>
           </div>
 
-          <span className="w-5 h-5 rounded-full bg-[#D64545] text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
-            1
+          <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm ${
+            isSafe ? "bg-[#E5F5EA] text-[#176B4D] border border-[#CDD7D1]" : "bg-[#D64545] text-white animate-pulse"
+          }`}>
+            {isSafe ? "0" : "1"}
           </span>
         </div>
 
@@ -36,7 +44,7 @@ export function WarningCard({ warning, onOpenWarning }: WarningCardProps) {
         </h4>
 
         <div className="text-xs text-[#68756E] mt-1 flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-[#D64545] shrink-0" />
+          <MapPin className={`w-3 h-3 shrink-0 ${isSafe ? "text-[#176B4D]" : "text-[#D64545]"}`} />
           <span className="truncate">{warning.affectedArea}</span>
         </div>
 
@@ -53,9 +61,11 @@ export function WarningCard({ warning, onOpenWarning }: WarningCardProps) {
 
         <button
           onClick={onOpenWarning}
-          className="text-xs font-semibold text-[#D64545] flex items-center gap-1 group-hover:gap-1.5 transition-all hover:underline"
+          className={`text-xs font-semibold flex items-center gap-1 group-hover:gap-1.5 transition-all hover:underline ${
+            isSafe ? "text-[#176B4D]" : "text-[#D64545]"
+          }`}
         >
-          <span>Lihat detail</span>
+          <span>{isSafe ? "Info mitigasi" : "Lihat detail"}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

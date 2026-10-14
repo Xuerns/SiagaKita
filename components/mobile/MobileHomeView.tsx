@@ -2,6 +2,10 @@ import React from "react";
 import { 
   ShieldCheck, 
   CloudRain, 
+  Sun,
+  CloudSun,
+  Cloud,
+  CloudLightning,
   AlertTriangle, 
   ArrowRight, 
   Compass, 
@@ -59,30 +63,56 @@ export function MobileHomeView({
       </div>
 
       {/* 2. Cuaca Saat Ini Card */}
-      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#EAF4FB] text-[#3983B9] flex items-center justify-center">
-            <CloudRain className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[11px] text-[#68756E] block">Cuaca Saat Ini</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-extrabold text-[#17211D]">
-                {weather.temp}°C
-              </span>
-              <span className="text-xs font-semibold text-[#17211D]">
-                {weather.condition}
-              </span>
+      {(() => {
+        const c = weather.condition.toLowerCase();
+        let icon = <Sun className="w-5 h-5" />;
+        let bg = "bg-[#FEF3C7] text-[#E88B26]";
+        if (c.includes("petir")) {
+          icon = <CloudLightning className="w-5 h-5" />;
+          bg = "bg-[#FEF3E6] text-[#D97706]";
+        } else if (c.includes("hujan")) {
+          icon = <CloudRain className="w-5 h-5" />;
+          bg = "bg-[#EAF4FB] text-[#3983B9]";
+        } else if (c.includes("cerah berawan")) {
+          icon = <CloudSun className="w-5 h-5" />;
+          bg = "bg-[#FEF9E7] text-[#D9A514]";
+        } else if (c.includes("berawan") || c.includes("kabut") || c.includes("kabur")) {
+          icon = <Cloud className="w-5 h-5" />;
+          bg = "bg-[#F1F4F2] text-[#68756E]";
+        }
+
+        return (
+          <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center shrink-0`}>
+                {icon}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-[#68756E] block">Cuaca Saat Ini</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-[#E8F5E9] text-[#176B4D]">
+                    {weather.source}
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-extrabold text-[#17211D]">
+                    {weather.temp}°C
+                  </span>
+                  <span className="text-xs font-semibold text-[#17211D]">
+                    {weather.condition}
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#929D96] block truncate max-w-[150px]">
+                  {weather.location}
+                </span>
+              </div>
             </div>
-            <span className="text-[10px] text-[#929D96] block">
-              {weather.location}
-            </span>
+            <div className="text-right text-[11px] text-[#68756E]">
+              <span>{weather.forecastRange}</span>
+            </div>
           </div>
-        </div>
-        <div className="text-right text-[11px] text-[#68756E]">
-          <span>{weather.forecastRange}</span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 3. Peringatan Aktif Banner (Red Callout) */}
       <div
