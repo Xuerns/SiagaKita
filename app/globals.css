@@ -6,23 +6,34 @@
   --color-primary-500: #287F4F;
   --color-primary-300: #5AC48A;
   
-  --bg-canvas: #E8ECEB;
+  --brand-primary: #176B4D;
+  --brand-deep: #104A35;
+  --brand-emerald: #25845F;
+  --brand-light: #E5F5EA;
+  --brand-pale: #F1F8F3;
+  
+  --bg-canvas: #F5F7F6;
   --bg-app: #FFFFFF;
-  --bg-surface-subtle: #F7F8F9;
+  --bg-surface-subtle: #F8FAF9;
   
-  --border-subtle: #EBEBEB;
-  --border-strong: #1B5E3A;
+  --border-subtle: #E6EBE8;
+  --border-strong: #CDD7D1;
   
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
+  --text-primary: #17211D;
+  --text-secondary: #68756E;
+  --text-muted: #929D96;
   --text-on-primary: #FFFFFF;
+
+  --risk-aman: #25845F;
+  --risk-waspada: #D9A514;
+  --risk-siaga: #E88B26;
+  --risk-awas: #D64545;
 }
 
 body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -47,7 +58,7 @@ body {
   );
 }
 
-/* Gradasi Hijau Zamrud Khas Donezo / SiagaKita */
+/* Gradasi Hijau Zamrud Khas SiagaKita */
 .bg-primary-gradient {
   background: linear-gradient(145deg, #114227 0%, #267D4D 100%);
 }
