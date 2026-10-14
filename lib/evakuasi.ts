@@ -1,5 +1,5 @@
 import { EvacuationPoint } from "@/types";
-import { calculateHaversineDistance } from "@/lib/bmkg";
+import { calculateHaversineDistance, INDONESIA_REGIONS } from "@/lib/bmkg";
 
 export const CITY_EVACUATION_MAP: Record<string, EvacuationPoint[]> = {
   "Kota Bandung": [
@@ -250,28 +250,51 @@ export const CITY_EVACUATION_MAP: Record<string, EvacuationPoint[]> = {
  * Get coordinates for a given city/regency name
  */
 export function getCityCoordinates(location: string): { lat: number; lng: number } {
-  const locLower = location.toLowerCase();
-  if (locLower.includes("bandung")) return { lat: -6.9175, lng: 107.6191 };
-  if (locLower.includes("bogor")) return { lat: -6.6216, lng: 106.8087 };
-  if (locLower.includes("jakarta")) return { lat: -6.1754, lng: 106.8272 };
-  if (locLower.includes("depok")) return { lat: -6.3980, lng: 106.8180 };
-  if (locLower.includes("surabaya")) return { lat: -7.2575, lng: 112.7521 };
-  if (locLower.includes("semarang")) return { lat: -6.9667, lng: 110.4167 };
-  if (locLower.includes("solo") || locLower.includes("surakarta")) return { lat: -7.5755, lng: 110.8243 };
-  if (locLower.includes("yogyakarta") || locLower.includes("jogja")) return { lat: -7.7956, lng: 110.3695 };
-  if (locLower.includes("malang")) return { lat: -7.9666, lng: 112.6326 };
-  if (locLower.includes("medan")) return { lat: 3.5952, lng: 98.6722 };
-  if (locLower.includes("makassar")) return { lat: -5.1477, lng: 119.4327 };
-  if (locLower.includes("denpasar") || locLower.includes("bali")) return { lat: -8.6705, lng: 115.2126 };
-  
+  const locLower = location.toLowerCase().trim();
+
+  // 1. Exact match first
+  const exact = INDONESIA_REGIONS.find((r) => r.name.toLowerCase() === locLower);
+  if (exact) {
+    return { lat: exact.lat, lng: exact.lon };
+  }
+
+  // 2. Normalized match (remove 'kota' / 'kab.' prefix)
+  const cleanLoc = locLower.replace(/^(kota|kab\.|kabupaten)\s+/i, "").trim();
+  const byClean = INDONESIA_REGIONS.find((r) => {
+    const cleanR = r.name.toLowerCase().replace(/^(kota|kab\.|kabupaten)\s+/i, "").trim();
+    return cleanR === cleanLoc;
+  });
+  if (byClean) {
+    return { lat: byClean.lat, lng: byClean.lon };
+  }
+
+  // 3. Word boundary regex to prevent "banjar" matching "banjarmasin"
+  const byWord = INDONESIA_REGIONS.find((r) => {
+    const cleanR = r.name.toLowerCase().replace(/^(kota|kab\.|kabupaten)\s+/i, "").trim();
+    const regex = new RegExp(`^${cleanR}$|\\b${cleanR}\\b`, "i");
+    return regex.test(cleanLoc);
+  });
+  if (byWord) {
+    return { lat: byWord.lat, lng: byWord.lon };
+  }
+
+  // Fallbacks with exact word boundary
+  if (/\bbandung\b/i.test(locLower)) return { lat: -6.9175, lng: 107.6191 };
+  if (/\bbogor\b/i.test(locLower)) return { lat: -6.6216, lng: 106.8087 };
+  if (/\bjakarta\b/i.test(locLower)) return { lat: -6.1754, lng: 106.8272 };
+  if (/\bdepok\b/i.test(locLower)) return { lat: -6.3980, lng: 106.8180 };
+  if (/\bsurabaya\b/i.test(locLower)) return { lat: -7.2575, lng: 112.7521 };
+  if (/\bbanjarmasin\b/i.test(locLower)) return { lat: -3.3194, lng: 114.5908 };
+  if (/\bbanjar\b/i.test(locLower)) return { lat: -7.3686, lng: 108.5339 };
+
   // Default to Kota Bandung
   return { lat: -6.9175, lng: 107.6191 };
 }
 
 /**
- * Returns customized evacuation points for the given city/regency,
- * with real Haversine distance and travel time dynamically calculated
- * from user's GPS coordinates (or city center) and sorted from closest to farthest.
+ * Returns customized evacuation points for the given city/regency.
+ * NOTE: Distance KM is ONLY calculated when the user is physically inside that city (< 40km).
+ * When viewing a different city / region, distance is omitted so no fake KM is displayed.
  */
 export function getEvacuationPointsForLocation(
   location: string,
@@ -279,11 +302,25 @@ export function getEvacuationPointsForLocation(
 ): EvacuationPoint[] {
   let rawPoints: EvacuationPoint[] = [];
 
-  // Check exact or partial match in dictionary
+  const locTrimmed = location.toLowerCase().trim();
+
+  // 1. Exact match in dictionary first
   for (const [key, points] of Object.entries(CITY_EVACUATION_MAP)) {
-    if (location.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(location.toLowerCase())) {
+    if (locTrimmed === key.toLowerCase().trim()) {
       rawPoints = points;
       break;
+    }
+  }
+
+  // 2. Normalized match if not found
+  if (!rawPoints || rawPoints.length === 0) {
+    const cleanLoc = locTrimmed.replace(/^(kota|kab\.|kabupaten)\s+/i, "").trim();
+    for (const [key, points] of Object.entries(CITY_EVACUATION_MAP)) {
+      const cleanKey = key.toLowerCase().replace(/^(kota|kab\.|kabupaten)\s+/i, "").trim();
+      if (cleanLoc === cleanKey) {
+        rawPoints = points;
+        break;
+      }
     }
   }
 
@@ -297,8 +334,6 @@ export function getEvacuationPointsForLocation(
         name: `GOR Olahraga Wilayah ${location}`,
         type: "GOR",
         address: `Pusat Kegiatan Olahraga & Pemuda, ${location}`,
-        distanceKm: 1.5,
-        travelMinutes: 6,
         capacity: 1500,
         fasilitas: ["Aula Evakuasi Tertutup", "Dapur Umum", "Genset Darurat"],
         lat: cityCoords.lat + 0.008,
@@ -309,8 +344,6 @@ export function getEvacuationPointsForLocation(
         name: `Masjid Agung / Pusat Ibadah ${location}`,
         type: "Masjid",
         address: `Kawasan Alun-Alun Utama, ${location}`,
-        distanceKm: 2.1,
-        travelMinutes: 9,
         capacity: 2000,
         fasilitas: ["Akses Air Bersih", "Ruang Rehat Luas", "Logistik Sembako"],
         lat: cityCoords.lat - 0.007,
@@ -321,8 +354,6 @@ export function getEvacuationPointsForLocation(
         name: `Posko Tanggap Darurat BPBD ${location}`,
         type: "Posko",
         address: `Kompleks Perkantoran Daerah, ${location}`,
-        distanceKm: 2.8,
-        travelMinutes: 11,
         capacity: 800,
         fasilitas: ["Pusat Komando Bencana", "Ambulans Standby", "Helipad"],
         lat: cityCoords.lat + 0.012,
@@ -333,8 +364,6 @@ export function getEvacuationPointsForLocation(
         name: `RSUD Daerah ${location}`,
         type: "Rumah Sakit",
         address: `Jl. Kesehatan Utama No. 1, ${location}`,
-        distanceKm: 3.4,
-        travelMinutes: 14,
         capacity: 250,
         fasilitas: ["IGD Bencana 24 Jam", "Trauma Center"],
         lat: cityCoords.lat - 0.011,
@@ -343,32 +372,41 @@ export function getEvacuationPointsForLocation(
     ];
   }
 
-  // Tentukan titik acuan perhitungan:
-  // Gunakan koordinat GPS jika ada, jika tidak gunakan pusat kota
-  const originLat = userCoords && typeof userCoords.lat === "number" ? userCoords.lat : cityCoords.lat;
-  const originLng = userCoords && typeof userCoords.lng === "number" ? userCoords.lng : cityCoords.lng;
+  // Periksa apakah user secara fisik berada di kota ini (radius < 40 km)
+  const isUserPhysicallyInCity = Boolean(
+    userCoords &&
+    typeof userCoords.lat === "number" &&
+    typeof userCoords.lng === "number" &&
+    calculateHaversineDistance(userCoords.lat, userCoords.lng, cityCoords.lat, cityCoords.lng) < 40
+  );
 
-  // Hitung jarak Haversine aktual ke setiap titik evakuasi
+  // Hitung jarak HANYA jika user memang berada di kota tersebut!
+  // Jika sedang melihat kota lain (beda daerah), hilangkan jarak KM agar tidak menyesatkan.
   const computedPoints = rawPoints.map((pt) => {
-    let distKm = pt.distanceKm ?? 1.5;
-    if (typeof pt.lat === "number" && typeof pt.lng === "number") {
-      const realDistance = calculateHaversineDistance(originLat, originLng, pt.lat, pt.lng);
-      distKm = Math.round(realDistance * 10) / 10;
+    if (isUserPhysicallyInCity && userCoords && typeof pt.lat === "number" && typeof pt.lng === "number") {
+      const realDistance = calculateHaversineDistance(userCoords.lat, userCoords.lng, pt.lat, pt.lng);
+      const distKm = Math.round(realDistance * 10) / 10;
+      const travelMinutes = distKm < 1 ? Math.max(2, Math.round(distKm * 10)) : Math.max(3, Math.round(distKm * 2.8));
+
+      return {
+        ...pt,
+        distanceKm: distKm,
+        travelMinutes,
+      };
     }
 
-    // Estimasi waktu tempuh realistis perkotaan:
-    // Kecepatan darurat jalan/berkendara lokal ~15-20 km/jam (~3-4 menit/km)
-    const travelMinutes = distKm < 1 ? Math.max(2, Math.round(distKm * 10)) : Math.max(3, Math.round(distKm * 2.8));
-
+    // Beda daerah: Kosongkan KM dan waktu tempuh
     return {
       ...pt,
-      distanceKm: distKm,
-      travelMinutes,
+      distanceKm: undefined,
+      travelMinutes: undefined,
     };
   });
 
-  // Urutkan titik evakuasi dari yang terdekat (KM terkecil)
-  computedPoints.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+  // Jika jarak ada, urutkan dari terdekat
+  if (isUserPhysicallyInCity) {
+    computedPoints.sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+  }
 
   return computedPoints;
 }

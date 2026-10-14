@@ -227,6 +227,7 @@ export function InteractiveRiskMap({
   }, [locationName, userCoords, isUserInCurrentCity, mapLoaded]);
 
   // 3. Update Navigation Route Line with Real Turn-by-Turn Road Network (OSRM)
+  // HANYA gambar rute jika user secara fisik berada di kota tersebut (isUserInCurrentCity && userCoords)
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     const routeSource = mapRef.current.getSource("route-source");
@@ -234,24 +235,25 @@ export function InteractiveRiskMap({
 
     const isRouteActive = activeLayer === "rute";
 
-    // Pastikan layer visibility selalu sinkron dengan tab aktif
+    // Pastikan layer visibility selalu sinkron dengan tab aktif dan posisi user
+    const shouldShowRouteLayer = isRouteActive && isUserInCurrentCity && Boolean(userCoords);
     if (mapRef.current.getLayer("route-line")) {
       mapRef.current.setLayoutProperty(
         "route-line",
         "visibility",
-        isRouteActive ? "visible" : "none"
+        shouldShowRouteLayer ? "visible" : "none"
       );
     }
     if (mapRef.current.getLayer("route-casing")) {
       mapRef.current.setLayoutProperty(
         "route-casing",
         "visibility",
-        isRouteActive ? "visible" : "none"
+        shouldShowRouteLayer ? "visibility" : "none"
       );
     }
 
-    if (isRouteActive && selectedPoint && selectedPoint.lat && selectedPoint.lng) {
-      const userCoord: [number, number] = [activeLng, activeLat];
+    if (shouldShowRouteLayer && userCoords && selectedPoint && selectedPoint.lat && selectedPoint.lng) {
+      const userCoord: [number, number] = [userCoords.lng, userCoords.lat];
       const targetCoord: [number, number] = [selectedPoint.lng, selectedPoint.lat];
 
       // Guard: do not draw routes spanning more than 35km across different cities
@@ -323,6 +325,7 @@ export function InteractiveRiskMap({
         isCancelled = true;
       };
     } else {
+      // User di luar kota atau GPS tidak aktif: Kosongkan rute sama sekali
       routeSource.setData({
         type: "Feature",
         geometry: {
@@ -332,7 +335,7 @@ export function InteractiveRiskMap({
         properties: {},
       });
     }
-  }, [showRoute, activeLayer, selectedPoint, activeLng, activeLat, mapLoaded]);
+  }, [showRoute, activeLayer, selectedPoint, isUserInCurrentCity, userCoords, mapLoaded]);
 
   // 5. Render Evacuation Markers & User Pin (ONLY if user is physically in the viewed city)
   useEffect(() => {
@@ -562,6 +565,21 @@ export function InteractiveRiskMap({
         </div>
       )}
 
+      {/* Banner ketika user melihat tab rute di luar kawasan fisiknya */}
+      {activeLayer === "rute" && !isUserInCurrentCity && (
+        <div className="absolute top-4 left-4 right-4 sm:right-auto sm:max-w-md z-20 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-[14px] border border-[#E6EBE8] shadow-lg flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="w-4 h-4 text-[#D97706] shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <span className="font-bold text-[#17211D] block">Navigasi Rute Belum Aktif</span>
+            <span className="text-[#68756E] text-[11px] leading-relaxed block mt-0.5">
+              {userCoords
+                ? `Lokasi fisik Anda berada di luar wilayah ${locationName}. Rute evakuasi darurat hanya aktif untuk kawasan tempat tinggal Anda.`
+                : `Aktifkan tombol GPS (ikon bidik) untuk menghitung rute langsung dari posisi Anda saat ini.`}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Map Legend (Bottom-Left) */}
       <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-[14px] p-3 border border-[#E6EBE8] shadow-md z-10 text-xs max-w-[220px]">
         <div className="font-bold text-[#17211D] mb-1.5 text-[11px] flex items-center justify-between">
@@ -570,7 +588,7 @@ export function InteractiveRiskMap({
             <span>Peta {locationName}</span>
           </div>
           <span className="text-[9px] text-[#176B4D] bg-[#E5F5EA] px-1.5 py-0.2 rounded font-semibold">
-            {activeLayer === "rute" ? "Navigasi Rute" : activeLayer === "laporan" ? "Laporan Warga" : "Peta Evakuasi"}
+            {activeLayer === "rute" ? (isUserInCurrentCity ? "Navigasi Rute" : "Info Wilayah") : activeLayer === "laporan" ? "Laporan Warga" : "Peta Evakuasi"}
           </span>
         </div>
 
@@ -611,7 +629,7 @@ export function InteractiveRiskMap({
             </div>
           )}
 
-          {activeLayer === "rute" && (
+          {activeLayer === "rute" && isUserInCurrentCity && userCoords && (
             <div className="flex items-center gap-1.5 pt-0.5">
               <span className="w-3.5 h-1 rounded bg-[#2563EB]" />
               <span className="font-semibold text-[#2563EB]">Rute Jalan Raya (OSRM)</span>

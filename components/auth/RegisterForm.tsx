@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -18,6 +18,7 @@ import {
   UserX,
   Check
 } from "lucide-react";
+import { INDONESIA_REGIONS } from "@/lib/bmkg";
 
 interface RegisterFormProps {
   onSwitchToLogin?: () => void;
@@ -30,7 +31,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"warga" | "relawan">("warga");
-  const [location, setLocation] = useState("Kota Bogor");
+  const [location, setLocation] = useState("Kota Bandung");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -38,14 +39,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const locations = [
-    "Kota Bogor",
-    "Kab. Bogor",
-    "Kota Depok",
-    "Kab. Sukabumi",
-    "DKI Jakarta",
-    "Kota Bekasi"
-  ];
+  const locations = useMemo(() => {
+    return INDONESIA_REGIONS.map((r) => r.name);
+  }, []);
 
   // Calculate password strength
   const calculateStrength = (pass: string) => {
