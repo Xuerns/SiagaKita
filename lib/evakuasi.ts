@@ -1,4 +1,5 @@
 import { EvacuationPoint } from "@/types";
+import { calculateHaversineDistance } from "@/lib/bmkg";
 
 export const CITY_EVACUATION_MAP: Record<string, EvacuationPoint[]> = {
   "Kota Bandung": [
@@ -269,67 +270,105 @@ export function getCityCoordinates(location: string): { lat: number; lng: number
 
 /**
  * Returns customized evacuation points for the given city/regency,
- * with fallbacks dynamically tailored to the city name.
+ * with real Haversine distance and travel time dynamically calculated
+ * from user's GPS coordinates (or city center) and sorted from closest to farthest.
  */
-export function getEvacuationPointsForLocation(location: string): EvacuationPoint[] {
+export function getEvacuationPointsForLocation(
+  location: string,
+  userCoords?: { lat: number; lng: number } | null
+): EvacuationPoint[] {
+  let rawPoints: EvacuationPoint[] = [];
+
   // Check exact or partial match in dictionary
   for (const [key, points] of Object.entries(CITY_EVACUATION_MAP)) {
     if (location.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(location.toLowerCase())) {
-      return points;
+      rawPoints = points;
+      break;
     }
   }
 
-  const coords = getCityCoordinates(location);
+  const cityCoords = getCityCoordinates(location);
 
-  // Dynamic fallback points tailored to the requested city with valid lat/lng
-  return [
-    {
-      id: `evac-gen-1`,
-      name: `GOR Olahraga Wilayah ${location}`,
-      type: "GOR",
-      address: `Pusat Kegiatan Olahraga & Pemuda, ${location}`,
-      distanceKm: 1.5,
-      travelMinutes: 6,
-      capacity: 1500,
-      fasilitas: ["Aula Evakuasi Tertutup", "Dapur Umum", "Genset Darurat"],
-      lat: coords.lat + 0.008,
-      lng: coords.lng + 0.006,
-    },
-    {
-      id: `evac-gen-2`,
-      name: `Masjid Agung / Pusat Ibadah ${location}`,
-      type: "Masjid",
-      address: `Kawasan Alun-Alun Utama, ${location}`,
-      distanceKm: 2.1,
-      travelMinutes: 9,
-      capacity: 2000,
-      fasilitas: ["Akses Air Bersih", "Ruang Rehat Luas", "Logistik Sembako"],
-      lat: coords.lat - 0.007,
-      lng: coords.lng + 0.009,
-    },
-    {
-      id: `evac-gen-3`,
-      name: `Posko Tanggap Darurat BPBD ${location}`,
-      type: "Posko",
-      address: `Kompleks Perkantoran Daerah, ${location}`,
-      distanceKm: 2.8,
-      travelMinutes: 11,
-      capacity: 800,
-      fasilitas: ["Pusat Komando Bencana", "Ambulans Standby", "Helipad"],
-      lat: coords.lat + 0.012,
-      lng: coords.lng - 0.010,
-    },
-    {
-      id: `evac-gen-4`,
-      name: `RSUD Daerah ${location}`,
-      type: "Rumah Sakit",
-      address: `Jl. Kesehatan Utama No. 1, ${location}`,
-      distanceKm: 3.4,
-      travelMinutes: 14,
-      capacity: 250,
-      fasilitas: ["IGD Bencana 24 Jam", "Trauma Center"],
-      lat: coords.lat - 0.011,
-      lng: coords.lng - 0.008,
-    },
-  ];
+  if (!rawPoints || rawPoints.length === 0) {
+    // Dynamic fallback points tailored to the requested city with valid lat/lng
+    rawPoints = [
+      {
+        id: `evac-gen-1`,
+        name: `GOR Olahraga Wilayah ${location}`,
+        type: "GOR",
+        address: `Pusat Kegiatan Olahraga & Pemuda, ${location}`,
+        distanceKm: 1.5,
+        travelMinutes: 6,
+        capacity: 1500,
+        fasilitas: ["Aula Evakuasi Tertutup", "Dapur Umum", "Genset Darurat"],
+        lat: cityCoords.lat + 0.008,
+        lng: cityCoords.lng + 0.006,
+      },
+      {
+        id: `evac-gen-2`,
+        name: `Masjid Agung / Pusat Ibadah ${location}`,
+        type: "Masjid",
+        address: `Kawasan Alun-Alun Utama, ${location}`,
+        distanceKm: 2.1,
+        travelMinutes: 9,
+        capacity: 2000,
+        fasilitas: ["Akses Air Bersih", "Ruang Rehat Luas", "Logistik Sembako"],
+        lat: cityCoords.lat - 0.007,
+        lng: cityCoords.lng + 0.009,
+      },
+      {
+        id: `evac-gen-3`,
+        name: `Posko Tanggap Darurat BPBD ${location}`,
+        type: "Posko",
+        address: `Kompleks Perkantoran Daerah, ${location}`,
+        distanceKm: 2.8,
+        travelMinutes: 11,
+        capacity: 800,
+        fasilitas: ["Pusat Komando Bencana", "Ambulans Standby", "Helipad"],
+        lat: cityCoords.lat + 0.012,
+        lng: cityCoords.lng - 0.010,
+      },
+      {
+        id: `evac-gen-4`,
+        name: `RSUD Daerah ${location}`,
+        type: "Rumah Sakit",
+        address: `Jl. Kesehatan Utama No. 1, ${location}`,
+        distanceKm: 3.4,
+        travelMinutes: 14,
+        capacity: 250,
+        fasilitas: ["IGD Bencana 24 Jam", "Trauma Center"],
+        lat: cityCoords.lat - 0.011,
+        lng: cityCoords.lng - 0.008,
+      },
+    ];
+  }
+
+  // Tentukan titik acuan perhitungan:
+  // Gunakan koordinat GPS jika ada, jika tidak gunakan pusat kota
+  const originLat = userCoords && typeof userCoords.lat === "number" ? userCoords.lat : cityCoords.lat;
+  const originLng = userCoords && typeof userCoords.lng === "number" ? userCoords.lng : cityCoords.lng;
+
+  // Hitung jarak Haversine aktual ke setiap titik evakuasi
+  const computedPoints = rawPoints.map((pt) => {
+    let distKm = pt.distanceKm ?? 1.5;
+    if (typeof pt.lat === "number" && typeof pt.lng === "number") {
+      const realDistance = calculateHaversineDistance(originLat, originLng, pt.lat, pt.lng);
+      distKm = Math.round(realDistance * 10) / 10;
+    }
+
+    // Estimasi waktu tempuh realistis perkotaan:
+    // Kecepatan darurat jalan/berkendara lokal ~15-20 km/jam (~3-4 menit/km)
+    const travelMinutes = distKm < 1 ? Math.max(2, Math.round(distKm * 10)) : Math.max(3, Math.round(distKm * 2.8));
+
+    return {
+      ...pt,
+      distanceKm: distKm,
+      travelMinutes,
+    };
+  });
+
+  // Urutkan titik evakuasi dari yang terdekat (KM terkecil)
+  computedPoints.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+
+  return computedPoints;
 }

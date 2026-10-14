@@ -13,7 +13,8 @@ import {
   Navigation,
   Compass,
   CheckCircle2,
-  Move
+  Move,
+  X
 } from "lucide-react";
 import { EvacuationPoint, CommunityReport } from "@/types";
 import { getCityCoordinates } from "@/lib/evakuasi";
@@ -26,43 +27,13 @@ interface InteractiveRiskMapProps {
   focusTimestamp?: number;
   onSelectPoint: (point: EvacuationPoint) => void;
   showRoute: boolean;
-  activeLayer: "risiko" | "evakuasi" | "rute" | "laporan";
+  activeLayer: "evakuasi" | "rute" | "laporan" | "risiko";
   locationName?: string;
   riskLevel?: string;
   userCoords?: { lat: number; lng: number; accuracy?: number } | null;
   onUpdateCoords?: (coords: { lat: number; lng: number; accuracy?: number } | null) => void;
   onSelectCity?: (locationName: string, adm4Code?: string, coords?: { lat: number; lng: number; accuracy?: number }) => void;
   onLocateGPS?: () => void;
-}
-
-// Helper to generate a GeoJSON circle polygon for risk zone
-function createGeoJSONCircle(center: [number, number], radiusInKm: number, points = 64) {
-  const coords = {
-    latitude: center[1],
-    longitude: center[0],
-  };
-
-  const km = radiusInKm;
-  const ret: [number, number][] = [];
-  const distanceX = km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180));
-  const distanceY = km / 110.574;
-
-  for (let i = 0; i < points; i++) {
-    const theta = (i / points) * (2 * Math.PI);
-    const x = distanceX * Math.cos(theta);
-    const y = distanceY * Math.sin(theta);
-    ret.push([coords.longitude + x, coords.latitude + y]);
-  }
-  ret.push(ret[0]);
-
-  return {
-    type: "Feature" as const,
-    geometry: {
-      type: "Polygon" as const,
-      coordinates: [ret],
-    },
-    properties: {},
-  };
 }
 
 export function InteractiveRiskMap({
@@ -116,6 +87,13 @@ export function InteractiveRiskMap({
         const maplibregl = mapModule.default || mapModule;
         if (isCancelled || !mapContainerRef.current) return;
 
+        // Pastikan worker URL diset ke berkas publik lokal agar Turbopack / Next.js tidak gagal memuat Web Worker
+        if (typeof maplibregl.setWorkerUrl === "function") {
+          maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+        } else if (maplibregl.config) {
+          maplibregl.config.WORKER_URL = "/maplibre-gl-worker.mjs";
+        }
+
         // Tile styles menggunakan OpenStreetMap resmi multi-subdomain (100% Gratis, Tanpa API Key & Tanpa Watermark)
         const osmStyle = {
           version: 8,
@@ -156,37 +134,6 @@ export function InteractiveRiskMap({
           mapRef.current = mapInstance;
           setMapLoaded(true);
 
-          // Add Risk Zone Circle GeoJSON source and layers
-          const circleGeoJSON = createGeoJSONCircle([cityCoords.lng, cityCoords.lat], 1.6);
-          
-          mapInstance.addSource("risk-zone-source", {
-            type: "geojson",
-            data: circleGeoJSON,
-          });
-
-          // Fill Layer
-          mapInstance.addLayer({
-            id: "risk-zone-fill",
-            type: "fill",
-            source: "risk-zone-source",
-            paint: {
-              "fill-color": riskLevel.toLowerCase() === "aman" ? "#176B4D" : riskLevel.toLowerCase() === "waspada" ? "#D9A514" : "#D64545",
-              "fill-opacity": riskLevel.toLowerCase() === "aman" ? 0.10 : 0.26,
-            },
-          });
-
-          // Line Outline Layer
-          mapInstance.addLayer({
-            id: "risk-zone-line",
-            type: "line",
-            source: "risk-zone-source",
-            paint: {
-              "line-color": riskLevel.toLowerCase() === "aman" ? "#176B4D" : "#D64545",
-              "line-width": 2,
-              "line-dasharray": [3, 2],
-            },
-          });
-
           // Route Source & Layer
           mapInstance.addSource("route-source", {
             type: "geojson",
@@ -205,9 +152,13 @@ export function InteractiveRiskMap({
             id: "route-casing",
             type: "line",
             source: "route-source",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
             paint: {
               "line-color": "#FFFFFF",
-              "line-width": 8,
+              "line-width": 8.5,
               "line-opacity": 0.95,
             },
           });
@@ -217,10 +168,13 @@ export function InteractiveRiskMap({
             id: "route-line",
             type: "line",
             source: "route-source",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
             paint: {
               "line-color": "#2563EB",
-              "line-width": 4.5,
-              "line-dasharray": [2, 1.5],
+              "line-width": 5.5,
             },
           });
         });
@@ -251,12 +205,6 @@ export function InteractiveRiskMap({
 
     const coords = getCityCoordinates(locationName);
 
-    // Update risk circle position around current city center
-    const circleSource = mapRef.current.getSource("risk-zone-source");
-    if (circleSource) {
-      circleSource.setData(createGeoJSONCircle([coords.lng, coords.lat], 1.6));
-    }
-
     // PRIORITAS 1: Jika GPS aktif dan koordinat presisi user tersedia di wilayah ini,
     // SELALU utamakan terbang langsung ke lokasi presisi GPS pengguna!
     if (userCoords && isUserInCurrentCity) {
@@ -278,31 +226,33 @@ export function InteractiveRiskMap({
     }
   }, [locationName, userCoords, isUserInCurrentCity, mapLoaded]);
 
-  // 3. Update Risk Zone color dynamically based on riskLevel
-  useEffect(() => {
-    if (!mapRef.current || !mapLoaded) return;
-    const norm = (riskLevel || "aman").toLowerCase();
-    const color = norm === "aman" ? "#176B4D" : norm === "waspada" ? "#D9A514" : "#D64545";
-    const opacity = norm === "aman" ? 0.10 : 0.26;
-
-    if (mapRef.current.getLayer("risk-zone-fill")) {
-      mapRef.current.setPaintProperty("risk-zone-fill", "fill-color", color);
-      mapRef.current.setPaintProperty("risk-zone-fill", "fill-opacity", opacity);
-    }
-    if (mapRef.current.getLayer("risk-zone-line")) {
-      mapRef.current.setPaintProperty("risk-zone-line", "line-color", color);
-    }
-  }, [riskLevel, mapLoaded]);
-
-  // 4. Update Navigation Route Line within current city
+  // 3. Update Navigation Route Line with Real Turn-by-Turn Road Network (OSRM)
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     const routeSource = mapRef.current.getSource("route-source");
     if (!routeSource) return;
 
-    if ((showRoute || activeLayer === "rute") && selectedPoint && selectedPoint.lat && selectedPoint.lng) {
-      const userCoord = [activeLng, activeLat];
-      const targetCoord = [selectedPoint.lng, selectedPoint.lat];
+    const isRouteActive = activeLayer === "rute";
+
+    // Pastikan layer visibility selalu sinkron dengan tab aktif
+    if (mapRef.current.getLayer("route-line")) {
+      mapRef.current.setLayoutProperty(
+        "route-line",
+        "visibility",
+        isRouteActive ? "visible" : "none"
+      );
+    }
+    if (mapRef.current.getLayer("route-casing")) {
+      mapRef.current.setLayoutProperty(
+        "route-casing",
+        "visibility",
+        isRouteActive ? "visible" : "none"
+      );
+    }
+
+    if (isRouteActive && selectedPoint && selectedPoint.lat && selectedPoint.lng) {
+      const userCoord: [number, number] = [activeLng, activeLat];
+      const targetCoord: [number, number] = [selectedPoint.lng, selectedPoint.lat];
 
       // Guard: do not draw routes spanning more than 35km across different cities
       const distKm = calculateHaversineDistance(userCoord[1], userCoord[0], targetCoord[1], targetCoord[0]);
@@ -315,35 +265,63 @@ export function InteractiveRiskMap({
         return;
       }
 
-      // Intermediate slight waypoint curve for realistic walking navigation feel
-      const midCoord = [
-        (userCoord[0] + targetCoord[0]) / 2 + 0.0012,
-        (userCoord[1] + targetCoord[1]) / 2 - 0.0008,
-      ];
+      let isCancelled = false;
 
-      const lineGeoJSON = {
-        type: "Feature" as const,
-        geometry: {
-          type: "LineString" as const,
-          coordinates: [userCoord, midCoord, targetCoord],
-        },
-        properties: {},
+      async function fetchRealRoadRoute() {
+        try {
+          // Ambil rute jalan raya resmi OpenStreetMap melalui OSRM Engine
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${userCoord[0]},${userCoord[1]};${targetCoord[0]},${targetCoord[1]}?overview=full&geometries=geojson`;
+          const res = await fetch(osrmUrl);
+          if (!res.ok) throw new Error("OSRM status error");
+          const data = await res.json();
+          if (isCancelled || !mapRef.current) return;
+
+          if (data.routes && data.routes[0]?.geometry?.coordinates?.length > 0) {
+            const roadCoords = data.routes[0].geometry.coordinates;
+            routeSource.setData({
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: roadCoords,
+              },
+              properties: {},
+            });
+
+            import("maplibre-gl").then((module: any) => {
+              if (isCancelled || !mapRef.current) return;
+              const maplibregl = module.default || module;
+              const bounds = new maplibregl.LngLatBounds();
+              roadCoords.forEach((c: [number, number]) => bounds.extend(c));
+              mapRef.current.fitBounds(bounds, {
+                padding: 70,
+                maxZoom: 15.5,
+                duration: 1000,
+              });
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn("Gagal memuat rute jalan OSRM, fallback ke jalur langsung:", e);
+        }
+
+        // Fallback jika koneksi ke OSRM gagal
+        if (!isCancelled && routeSource) {
+          routeSource.setData({
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [userCoord, targetCoord],
+            },
+            properties: {},
+          });
+        }
+      }
+
+      fetchRealRoadRoute();
+
+      return () => {
+        isCancelled = true;
       };
-
-      routeSource.setData(lineGeoJSON);
-
-      // Fit map to show both points with padding (within local city bounds)
-      import("maplibre-gl").then((module: any) => {
-        const maplibregl = module.default || module;
-        const bounds = new maplibregl.LngLatBounds();
-        bounds.extend(userCoord as [number, number]);
-        bounds.extend(targetCoord as [number, number]);
-        mapRef.current.fitBounds(bounds, {
-          padding: 70,
-          maxZoom: 15.5,
-          duration: 1000,
-        });
-      });
     } else {
       routeSource.setData({
         type: "Feature",
@@ -411,57 +389,59 @@ export function InteractiveRiskMap({
         userMarkerRef.current = userMarker;
       }
 
-      // Add Evacuation Points Markers for the viewed city
-      evacuationPoints.forEach((pt) => {
-        if (!pt.lat || !pt.lng) return;
+      // Add Evacuation Points Markers when viewing map (on "evakuasi" and "rute" tabs)
+      if (activeLayer !== "laporan") {
+        evacuationPoints.forEach((pt) => {
+          if (!pt.lat || !pt.lng) return;
 
-        const isSelected = pt.id === selectedPointId;
-        const isHospital = pt.type === "Rumah Sakit";
+          const isSelected = pt.id === selectedPointId;
+          const isHospital = pt.type === "Rumah Sakit";
 
-        const markerEl = document.createElement("div");
-        markerEl.className = `cursor-pointer flex flex-col items-center select-none ${
-          isSelected ? "z-30" : "z-20"
-        }`;
+          const markerEl = document.createElement("div");
+          markerEl.className = `cursor-pointer flex flex-col items-center select-none ${
+            isSelected ? "z-30" : "z-20"
+          }`;
 
-        // Pin Badge Pill + Circle
-        markerEl.innerHTML = `
-          <div class="bg-white/95 backdrop-blur-xs border ${
-            isSelected ? "border-[#176B4D] ring-2 ring-[#176B4D]/30 shadow-md text-[#176B4D]" : "border-[#CDD7D1] shadow-xs text-[#17211D]"
-          } rounded-[6px] px-2 py-0.5 mb-1 whitespace-nowrap max-w-[140px] truncate transition-colors">
-            <span class="text-[10px] font-bold">${pt.name}</span>
-          </div>
-          <div class="w-7 h-7 rounded-full ${
-            isHospital ? "bg-[#3983B9]" : "bg-[#176B4D]"
-          } border-2 border-white shadow-md flex items-center justify-center text-white font-bold text-xs transition-shadow hover:shadow-xl ${
-            isSelected ? "ring-4 ring-[#176B4D]/40" : "hover:ring-2 hover:ring-[#176B4D]/30"
-          }">
-            ${isHospital ? "H" : "⌂"}
-          </div>
-        `;
+          // Pin Badge Pill + Circle
+          markerEl.innerHTML = `
+            <div class="bg-white/95 backdrop-blur-xs border ${
+              isSelected ? "border-[#176B4D] ring-2 ring-[#176B4D]/30 shadow-md text-[#176B4D]" : "border-[#CDD7D1] shadow-xs text-[#17211D]"
+            } rounded-[6px] px-2 py-0.5 mb-1 whitespace-nowrap max-w-[140px] truncate transition-colors">
+              <span class="text-[10px] font-bold">${pt.name}</span>
+            </div>
+            <div class="w-7 h-7 rounded-full ${
+              isHospital ? "bg-[#3983B9]" : "bg-[#176B4D]"
+            } border-2 border-white shadow-md flex items-center justify-center text-white font-bold text-xs transition-shadow hover:shadow-xl ${
+              isSelected ? "ring-4 ring-[#176B4D]/40" : "hover:ring-2 hover:ring-[#176B4D]/30"
+            }">
+              ${isHospital ? "H" : "⌂"}
+            </div>
+          `;
 
-        // Click handler
-        markerEl.addEventListener("click", () => {
-          onSelectPoint(pt);
-          if (mapRef.current) {
-            mapRef.current.easeTo({
-              center: [pt.lng, pt.lat],
-              zoom: Math.max(mapRef.current.getZoom(), 14.5),
-              duration: 800,
-            });
-          }
+          // Click handler
+          markerEl.addEventListener("click", () => {
+            onSelectPoint(pt);
+            if (mapRef.current) {
+              mapRef.current.easeTo({
+                center: [pt.lng, pt.lat],
+                zoom: Math.max(mapRef.current.getZoom(), 14.5),
+                duration: 800,
+              });
+            }
+          });
+
+          const marker = new maplibregl.Marker({ 
+            element: markerEl,
+            anchor: "bottom",
+          })
+            .setLngLat([pt.lng, pt.lat])
+            .addTo(mapRef.current);
+
+          markersRef.current.push(marker);
         });
-
-        const marker = new maplibregl.Marker({ 
-          element: markerEl,
-          anchor: "bottom",
-        })
-          .setLngLat([pt.lng, pt.lat])
-          .addTo(mapRef.current);
-
-        markersRef.current.push(marker);
-      });
+      }
     });
-  }, [evacuationPoints, selectedPointId, locationName, userCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords]);
+  }, [evacuationPoints, selectedPointId, locationName, userCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords, activeLayer]);
 
   // 6. Smoothly pan/center map ONLY when an evacuation point is explicitly clicked/selected by user
   const prevFocusTimestampRef = useRef<number>(focusTimestamp || 0);
@@ -587,28 +567,28 @@ export function InteractiveRiskMap({
         <div className="font-bold text-[#17211D] mb-1.5 text-[11px] flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-[#176B4D]" />
-            <span>Legenda Peta</span>
+            <span>Peta {locationName}</span>
           </div>
           <span className="text-[9px] text-[#176B4D] bg-[#E5F5EA] px-1.5 py-0.2 rounded font-semibold">
-            OSM Live
+            {activeLayer === "rute" ? "Navigasi Rute" : activeLayer === "laporan" ? "Laporan Warga" : "Peta Evakuasi"}
           </span>
         </div>
 
-        <div className="text-[10px] text-[#68756E] mb-1 font-semibold">Status Bahaya ({locationName}):</div>
+        <div className="text-[10px] text-[#68756E] mb-1 font-semibold">Status Wilayah (Live BMKG):</div>
         <div className="grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[10px]">
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${riskLevel === "aman" ? "font-bold text-[#176B4D]" : "text-[#68756E]"}`}>
             <span className="w-2.5 h-2.5 rounded-full bg-[#176B4D]" />
             <span>Aman</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${riskLevel === "waspada" ? "font-bold text-[#D9A514]" : "text-[#68756E]"}`}>
             <span className="w-2.5 h-2.5 rounded-full bg-[#D9A514]" />
             <span>Waspada</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${riskLevel === "siaga" ? "font-bold text-[#D64545]" : "text-[#68756E]"}`}>
             <span className="w-2.5 h-2.5 rounded-full bg-[#D64545]" />
             <span>Siaga</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1.5 ${riskLevel === "awas" ? "font-bold text-[#991B1B]" : "text-[#68756E]"}`}>
             <span className="w-2.5 h-2.5 rounded-full bg-[#991B1B]" />
             <span>Awas</span>
           </div>
@@ -623,16 +603,18 @@ export function InteractiveRiskMap({
             <span className="w-3.5 h-3.5 rounded-full bg-[#3983B9] text-white flex items-center justify-center text-[8px] font-bold">H</span>
             <span>Rumah Sakit / Medis</span>
           </div>
+
           {isUserInCurrentCity && userCoords && (
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-[#2563EB] ring-2 ring-white" />
               <span className="font-semibold text-[#17211D]">Posisi Presisi Anda</span>
             </div>
           )}
-          {showRoute && (
+
+          {activeLayer === "rute" && (
             <div className="flex items-center gap-1.5 pt-0.5">
               <span className="w-3.5 h-1 rounded bg-[#2563EB]" />
-              <span className="font-semibold text-[#2563EB]">Rute Evakuasi Aktif</span>
+              <span className="font-semibold text-[#2563EB]">Rute Jalan Raya (OSRM)</span>
             </div>
           )}
         </div>

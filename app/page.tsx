@@ -59,13 +59,13 @@ export default function SiagaKitaApp() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [isMapOfflineDownloaded, setIsMapOfflineDownloaded] = useState<boolean>(false);
   const [showRoute, setShowRoute] = useState<boolean>(false);
-  const [mapLayerTab, setMapLayerTab] = useState<"risiko" | "evakuasi" | "rute" | "laporan">("risiko");
+  const [mapLayerTab, setMapLayerTab] = useState<"evakuasi" | "rute" | "laporan">("evakuasi");
   const [communityReports, setCommunityReports] = useState<CommunityReport[]>(mockCommunityReports);
 
-  // Dynamic evacuation points according to current location (e.g. Bandung, Jakarta, Bogor)
+  // Dynamic evacuation points according to current location and user's GPS coords
   const currentEvacuationPoints = useMemo(() => {
-    return getEvacuationPointsForLocation(currentLocation);
-  }, [currentLocation]);
+    return getEvacuationPointsForLocation(currentLocation, userCoords);
+  }, [currentLocation, userCoords]);
 
   const [selectedPoint, setSelectedPoint] = useState<EvacuationPoint>(currentEvacuationPoints[0]);
 
@@ -564,8 +564,7 @@ export default function SiagaKitaApp() {
                   {/* Interactive Map Filter Tabs */}
                   <div className="flex items-center gap-2 border-b border-[#E6EBE8] pb-2">
                     {[
-                      { id: "risiko", label: "Peta Risiko" },
-                      { id: "evakuasi", label: "Titik Evakuasi" },
+                      { id: "evakuasi", label: "Peta & Titik Evakuasi" },
                       { id: "rute", label: "Rute Evakuasi" },
                       { id: "laporan", label: "Laporan Warga" },
                     ].map((tab) => (
@@ -573,7 +572,7 @@ export default function SiagaKitaApp() {
                         key={tab.id}
                         onClick={() => {
                           setMapLayerTab(tab.id as any);
-                          if (tab.id === "rute") setShowRoute(true);
+                          setShowRoute(tab.id === "rute");
                         }}
                         className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all ${
                           mapLayerTab === tab.id
@@ -621,6 +620,7 @@ export default function SiagaKitaApp() {
                         onStartRouteNavigation={handleStartRouteNavigation}
                         onOpenOfflineDownload={() => setShowOfflineModal(true)}
                         isMapOfflineDownloaded={isMapOfflineDownloaded}
+                        isGpsActive={Boolean(userCoords)}
                       />
                     </div>
                   </div>
