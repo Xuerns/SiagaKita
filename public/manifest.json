@@ -1,0 +1,17 @@
+{
+  "name": "SiagaKita — Kesiapsiagaan Bencana & Peta Evakuasi",
+  "short_name": "SiagaKita",
+  "description": "Platform PWA kesiapsiagaan bencana hiperlokal, peta evakuasi offline, dan laporan warga terverifikasi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F3822",
+  "theme_color": "#0F3822",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
