@@ -106,7 +106,18 @@ export function LocationSelectorModal({
     }
   };
 
-  const groups = ["Semua", "Jabodetabek", "Jawa Barat", "Jawa Tengah & DIY", "Jawa Timur", "Luar Jawa"];
+  const groups = [
+    "Semua", 
+    "Jabodetabek & Banten", 
+    "Jawa Barat", 
+    "Jawa Tengah & DIY", 
+    "Jawa Timur", 
+    "Sumatera", 
+    "Kalimantan", 
+    "Sulawesi", 
+    "Bali & Nusa Tenggara", 
+    "Maluku & Papua"
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
