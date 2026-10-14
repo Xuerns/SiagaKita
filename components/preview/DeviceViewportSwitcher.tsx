@@ -17,7 +17,7 @@ export function DeviceViewportSwitcher({
   onSimulatePushNotification,
 }: DeviceViewportSwitcherProps) {
   return (
-    <div className="fixed top-3 right-4 z-50 flex items-center gap-1.5 bg-[#17211D]/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-white/20 select-none text-xs">
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 bg-[#17211D]/90 backdrop-blur-md p-1.5 rounded-full shadow-2xl border border-white/20 select-none text-xs">
       <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-full">
         <button
           onClick={() => onChangeMode("desktop")}

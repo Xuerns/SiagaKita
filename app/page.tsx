@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { getAdm4ByLocation } from "@/lib/bmkg";
+import { hitungSkorBanjir } from "@/lib/risiko";
+import { getEvacuationPointsForLocation } from "@/lib/evakuasi";
 import { 
   DesktopSidebar, 
   NavTab 
@@ -31,6 +34,7 @@ import { DeviceViewportSwitcher, ViewportMode } from "@/components/preview/Devic
 import { DesignSystemViewer } from "@/components/preview/DesignSystemViewer";
 import { SayaAmanModal } from "@/components/ui/SayaAmanModal";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
 import { 
   mockCurrentWeather, 
   mockForecast5Days, 
@@ -39,7 +43,7 @@ import {
   mockEvacuationPoints, 
   mockCommunityReports 
 } from "@/data/mockDisasterData";
-import { EvacuationPoint, CommunityReport } from "@/types";
+import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning } from "@/types";
 import { DownloadCloud, Layers } from "lucide-react";
 
 export default function SiagaKitaApp() {
@@ -50,24 +54,189 @@ export default function SiagaKitaApp() {
   const [mobileSubScreen, setMobileSubScreen] = useState<"default" | "peringatan" | "rute">("default");
 
   // App & Data States
-  const [currentLocation, setCurrentLocation] = useState<string>("Kota Bogor");
+  const [currentLocation, setCurrentLocation] = useState<string>("Kota Bandung");
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [isMapOfflineDownloaded, setIsMapOfflineDownloaded] = useState<boolean>(false);
-  const [selectedPoint, setSelectedPoint] = useState<EvacuationPoint>(mockEvacuationPoints[0]);
   const [showRoute, setShowRoute] = useState<boolean>(false);
   const [mapLayerTab, setMapLayerTab] = useState<"risiko" | "evakuasi" | "rute" | "laporan">("risiko");
   const [communityReports, setCommunityReports] = useState<CommunityReport[]>(mockCommunityReports);
 
+  // Dynamic evacuation points according to current location (e.g. Bandung, Jakarta, Bogor)
+  const currentEvacuationPoints = useMemo(() => {
+    return getEvacuationPointsForLocation(currentLocation);
+  }, [currentLocation]);
+
+  const [selectedPoint, setSelectedPoint] = useState<EvacuationPoint>(currentEvacuationPoints[0]);
+
+  useEffect(() => {
+    if (currentEvacuationPoints && currentEvacuationPoints.length > 0) {
+      setSelectedPoint(currentEvacuationPoints[0]);
+    }
+  }, [currentEvacuationPoints]);
+
+  // BMKG Weather States
+  const [currentWeather, setCurrentWeather] = useState<WeatherCurrent>(mockCurrentWeather);
+  const [forecastDays, setForecastDays] = useState<ForecastDay[]>(mockForecast5Days);
+  const [isLoadingWeather, setIsLoadingWeather] = useState<boolean>(false);
+
+  // Fetch BMKG Weather dynamically
+  const fetchWeather = useCallback(async (location: string, customAdm4?: string) => {
+    try {
+      setIsLoadingWeather(true);
+      const adm4 = customAdm4 || getAdm4ByLocation(location);
+      const res = await fetch(`/api/cuaca?adm4=${encodeURIComponent(adm4)}`);
+      if (!res.ok) throw new Error("Gagal mengambil data cuaca BMKG");
+      const json = await res.json();
+      if (json.data?.weather) {
+        setCurrentWeather(json.data.weather);
+      }
+      if (json.data?.forecast && json.data.forecast.length > 0) {
+        setForecastDays(json.data.forecast);
+      }
+    } catch (err) {
+      console.warn("Gagal memuat cuaca dari BMKG API, tetap menggunakan data cache:", err);
+    } finally {
+      setIsLoadingWeather(false);
+    }
+  }, []);
+
+  const handleSelectLocation = (
+    locationName: string, 
+    adm4Code?: string, 
+    preciseCoords?: { lat: number; lng: number; accuracy?: number }
+  ) => {
+    setCurrentLocation(locationName);
+    // Reset userCoords jika user memilih kota secara manual dari dropdown/modal
+    // Hanya aktifkan koordinat presisi jika tombol GPS ditekan
+    setUserCoords(preciseCoords || null);
+    fetchWeather(locationName, adm4Code);
+  };
+
+  useEffect(() => {
+    fetchWeather(currentLocation);
+  }, [currentLocation, fetchWeather]);
+
+  // Dynamic risk calculation based on BMKG weather condition & location
+  const currentRisk = useMemo(() => {
+    const cond = currentWeather.condition.toLowerCase();
+    let h24 = 0;
+    let h3 = 10;
+    let mukaAir = 25;
+
+    // Utamakan data presipitasi curah hujan dari API BMKG jika terisi
+    if (typeof currentWeather.precipitationMm === "number" && currentWeather.precipitationMm > 0) {
+      h24 = Math.round(currentWeather.precipitationMm);
+      h3 = Math.round(currentWeather.precipitationMm * 2.4);
+      mukaAir = h24 > 100 ? 85 : h24 > 50 ? 65 : h24 > 20 ? 45 : 25;
+    } else if (cond.includes("lebat") || cond.includes("petir")) {
+      h24 = 125;
+      h3 = 240;
+      mukaAir = 85;
+    } else if (cond.includes("sedang")) {
+      h24 = 65;
+      h3 = 120;
+      mukaAir = 60;
+    } else if (cond.includes("ringan") || cond.includes("hujan")) {
+      h24 = 35;
+      h3 = 65;
+      mukaAir = 45;
+    } else if (cond.includes("berawan")) {
+      h24 = 5;
+      h3 = 15;
+      mukaAir = 25;
+    } else {
+      // Cerah
+      h24 = 0;
+      h3 = 5;
+      mukaAir = 20;
+    }
+
+    const res = hitungSkorBanjir({
+      hujan24jMm: h24,
+      hujan3hariMm: h3,
+      muka_air: mukaAir,
+      kerentanan: 60,
+    });
+
+    let mukaAirText = "Normal (Aman)";
+    if (res.level === "awas") mukaAirText = "Kritis (Siaga 1)";
+    else if (res.level === "siaga") mukaAirText = "Meningkat (Siaga 2)";
+    else if (res.level === "waspada") mukaAirText = "Waspada (Siaga 3)";
+
+    return {
+      level: res.level,
+      skor: res.skor,
+      h24,
+      h3,
+      mukaAir,
+      mukaAirText,
+    };
+  }, [currentWeather]);
+
+  // Dynamic active warning matching currentRisk & currentLocation
+  const dynamicWarning: ActiveWarning = useMemo(() => {
+    if (currentRisk.level === "aman") {
+      return {
+        id: "warn-aman",
+        title: "Kondisi Wilayah Kondusif",
+        hazardType: "Cuaca Normal",
+        level: "Aman",
+        affectedArea: currentLocation,
+        validPeriod: "Hari ini · Pantauan Rutin",
+        issuedTime: currentWeather.lastUpdated,
+        source: "BMKG",
+        description: `Kondisi cuaca di ${currentLocation} terpantau ${currentWeather.condition}. Tidak ada peringatan cuaca ekstrem aktif.`,
+        whatHappened: `Cuaca ${currentWeather.condition} dengan curah hujan rendah. Kondisi lingkungan terpantau aman dan terkendali.`,
+        whereLocation: currentLocation,
+        howSevere: "Level Aman. Seluruh aktivitas warga dapat berjalan normal.",
+        instructions: [
+          "Tetap pantau pembaruan cuaca berkala dari BMKG.",
+          "Jaga kebersihan saluran air di sekitar rumah.",
+          "Periksa tas siaga bencana untuk persiapan rutin.",
+        ],
+        isDemoSimulation: false,
+      };
+    }
+
+    const levelCapitalized = (currentRisk.level === "awas" ? "Awas" : currentRisk.level === "siaga" ? "Siaga" : "Waspada") as "Awas" | "Siaga" | "Waspada";
+
+    return {
+      id: `warn-${currentRisk.level}`,
+      title: `Peringatan Dini Cuaca (${currentWeather.condition})`,
+      hazardType: "Potensi Genangan & Banjir",
+      level: levelCapitalized,
+      affectedArea: currentLocation,
+      validPeriod: "24 Jam ke Depan",
+      issuedTime: currentWeather.lastUpdated,
+      source: "BMKG",
+      description: `Potensi kenaikan debit air dan genangan akibat ${currentWeather.condition} di wilayah ${currentLocation}.`,
+      whatHappened: `Curah hujan akumulatif (${currentRisk.h24} mm/24j) menyebabkan debit aliran air berpotensi meningkat.`,
+      whereLocation: `Wilayah ${currentLocation} dan daerah resapan terdekat.`,
+      howSevere: `Level ${levelCapitalized}. Warga diimbau waspada terhadap saluran air yang tersumbat.`,
+      instructions: [
+        "Hindari daerah bantaran sungai dan jalan berarus deras.",
+        "Amankan peralatan listrik dan dokumen berharga ke tempat lebih tinggi.",
+        "Pantau instruksi resmi dari BPBD setempat dan peringatan BMKG.",
+        "Ketahui rute evakuasi terdekat bila terjadi genangan air.",
+      ],
+      isDemoSimulation: false,
+    };
+  }, [currentRisk, currentLocation, currentWeather]);
+
   // Modals & Overlays
+  const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
   const [showEmergencyFullscreen, setShowEmergencyFullscreen] = useState<boolean>(false);
   const [showOfflineModal, setShowOfflineModal] = useState<boolean>(false);
   const [showCreateReportModal, setShowCreateReportModal] = useState<boolean>(false);
   const [showSayaAmanModal, setShowSayaAmanModal] = useState<boolean>(false);
   const [showPushNotification, setShowPushNotification] = useState<boolean>(false);
+  const [focusTimestamp, setFocusTimestamp] = useState<number>(0);
 
   // Handlers
   const handleSelectEvacuationPoint = (pt: EvacuationPoint) => {
     setSelectedPoint(pt);
+    setFocusTimestamp(Date.now());
   };
 
   const handleStartRouteNavigation = () => {
@@ -206,11 +375,7 @@ export default function SiagaKitaApp() {
                 <MobileHeader
                   locationName={currentLocation}
                   onOpenNotifications={() => setShowPushNotification(true)}
-                  onOpenLocationSelector={() =>
-                    setCurrentLocation((loc) =>
-                      loc === "Kota Bogor" ? "Kab. Bogor" : "Kota Bogor"
-                    )
-                  }
+                  onOpenLocationSelector={() => setShowLocationModal(true)}
                 />
               </div>
             )}
@@ -230,9 +395,9 @@ export default function SiagaKitaApp() {
                 />
               ) : mobileTab === "beranda" ? (
                 <MobileHomeView
-                  weather={mockCurrentWeather}
-                  warning={mockActiveWarning}
-                  forecast={mockForecast5Days}
+                  weather={currentWeather}
+                  warning={dynamicWarning}
+                  forecast={forecastDays}
                   onNavigateTab={(tab) => setMobileTab(tab)}
                   onOpenWarningDetail={() => setMobileSubScreen("peringatan")}
                   onOpenSayaAman={() => setShowSayaAmanModal(true)}
@@ -297,7 +462,10 @@ export default function SiagaKitaApp() {
             {/* Topbar */}
             <DesktopTopbar
               currentLocation={currentLocation}
-              onLocationChange={setCurrentLocation}
+              onLocationChange={(loc) => {
+                handleSelectLocation(loc);
+              }}
+              onOpenLocationModal={() => setShowLocationModal(true)}
               isOnline={isOnline}
               onToggleOnline={() => setIsOnline(!isOnline)}
               onOpenNotifications={() => setShowPushNotification(true)}
@@ -329,14 +497,19 @@ export default function SiagaKitaApp() {
 
                   {/* Top Summary Row (3 Cards: Cuaca, Status Risiko, Peringatan Aktif) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <WeatherCard weather={mockCurrentWeather} />
+                    <WeatherCard 
+                      weather={currentWeather} 
+                      isLoading={isLoadingWeather}
+                      onRefresh={() => fetchWeather(currentLocation)}
+                      onOpenLocationModal={() => setShowLocationModal(true)}
+                    />
                     <RiskStatusCard
-                      level="Aman"
+                      level={currentRisk.level}
                       location={currentLocation}
                       onViewRiskDetails={() => setCurrentTab("peta")}
                     />
                     <WarningCard
-                      warning={mockActiveWarning}
+                      warning={dynamicWarning}
                       onOpenWarning={() => setShowEmergencyFullscreen(true)}
                     />
                   </div>
@@ -347,7 +520,7 @@ export default function SiagaKitaApp() {
                   {/* Lower Row: 5-Day Forecast, Tindakan Cepat, Education Hero Banner */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
                     <div className="lg:col-span-5">
-                      <ForecastSection forecast={mockForecast5Days} />
+                      <ForecastSection forecast={forecastDays} />
                     </div>
                     <div className="lg:col-span-4">
                       <QuickActionPanel
@@ -417,19 +590,33 @@ export default function SiagaKitaApp() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                     <div className="lg:col-span-8">
                       <InteractiveRiskMap
-                        evacuationPoints={mockEvacuationPoints}
+                        evacuationPoints={currentEvacuationPoints}
                         communityReports={communityReports}
-                        selectedPointId={selectedPoint.id}
+                        selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
+                        focusTimestamp={focusTimestamp}
                         onSelectPoint={handleSelectEvacuationPoint}
                         showRoute={showRoute}
                         activeLayer={mapLayerTab}
+                        locationName={currentLocation}
+                        riskLevel={currentRisk.level}
+                        userCoords={userCoords}
+                        onUpdateCoords={setUserCoords}
+                        onSelectCity={handleSelectLocation}
+                        onLocateGPS={() => setShowLocationModal(true)}
                       />
                     </div>
                     <div className="lg:col-span-4 h-full">
                       <MapDetailsPanel
-                        selectedArea="Kec. Bogor Selatan"
-                        evacuationPoints={mockEvacuationPoints}
-                        selectedPointId={selectedPoint.id}
+                        selectedArea={currentLocation}
+                        riskLevel={currentRisk.level}
+                        hujan24jMm={currentRisk.h24}
+                        mukaAirStatus={currentRisk.mukaAirText}
+                        weatherCondition={currentWeather.condition}
+                        temp={currentWeather.temp}
+                        humidity={currentWeather.humidity}
+                        windSpeed={currentWeather.windSpeed}
+                        evacuationPoints={currentEvacuationPoints}
+                        selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
                         onSelectPoint={handleSelectEvacuationPoint}
                         onStartRouteNavigation={handleStartRouteNavigation}
                         onOpenOfflineDownload={() => setShowOfflineModal(true)}
@@ -525,6 +712,44 @@ export default function SiagaKitaApp() {
             </main>
           </div>
         </div>
+      )}
+
+      {/* Modals & Overlays */}
+      <LocationSelectorModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        currentLocation={currentLocation}
+        onSelectLocation={handleSelectLocation}
+      />
+
+      <SayaAmanModal
+        isOpen={showSayaAmanModal}
+        onClose={() => setShowSayaAmanModal(false)}
+      />
+
+      <CreateReportModal
+        isOpen={showCreateReportModal}
+        onClose={() => setShowCreateReportModal(false)}
+        onSubmit={handleCreateReport}
+      />
+
+      <OfflineMapModal
+        isOpen={showOfflineModal}
+        onClose={() => setShowOfflineModal(false)}
+        isDownloaded={isMapOfflineDownloaded}
+        onDownloadComplete={() => setIsMapOfflineDownloaded(true)}
+        onRemoveDownload={() => setIsMapOfflineDownloaded(false)}
+      />
+
+      {showPushNotification && (
+        <NotificationBanner
+          warning={dynamicWarning}
+          onOpenWarning={() => {
+            setShowPushNotification(false);
+            setShowEmergencyFullscreen(true);
+          }}
+          onDismiss={() => setShowPushNotification(false)}
+        />
       )}
     </div>
   );

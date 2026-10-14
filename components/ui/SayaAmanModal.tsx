@@ -92,7 +92,7 @@ export function SayaAmanModal({ isOpen, onClose }: SayaAmanModalProps) {
                     Sudah di Titik Evakuasi Aman
                   </span>
                   <span className="text-[10px] text-[#68756E]">
-                    Telah tiba di SMPN 5 Bogor atau posko terdekat
+                    Telah tiba di posko atau titik evakuasi terdekat
                   </span>
                 </div>
                 {status === "titik_evakuasi" && (

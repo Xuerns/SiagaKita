@@ -35,6 +35,9 @@ export interface WeatherCurrent {
   forecastRange: string;
   source: SourceType;
   lastUpdated: string;
+  humidity?: number;
+  windSpeed?: number;
+  precipitationMm?: number;
   todaySummary: {
     condition: string;
     range: string;
