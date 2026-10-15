@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
-import { getAdm4ByLocation } from "@/lib/bmkg";
+import { getAdm4ByLocation, findClosestBMKGRegion } from "@/lib/bmkg";
 import { hitungSkorBanjir } from "@/lib/risiko";
 import { getEvacuationPointsForLocation, getDefaultCoordinatesForLocation } from "@/lib/evakuasi";
 import { 
@@ -46,7 +46,18 @@ import {
   mockCommunityReports 
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning } from "@/types";
-import { DownloadCloud, Layers } from "lucide-react";
+import { 
+  DownloadCloud, 
+  Layers, 
+  ShieldCheck, 
+  User, 
+  Trash2, 
+  AlertTriangle, 
+  LogIn, 
+  LogOut, 
+  Loader2 
+} from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function SiagaKitaApp() {
   // Navigation & Viewport State
@@ -124,11 +135,17 @@ export default function SiagaKitaApp() {
           title: r.title || r.tipe || "Laporan Lapangan",
           description: r.description || r.deskripsi || "",
           deskripsi: r.deskripsi || r.description || "",
-          locationName: r.locationName || currentLocation,
+          locationName:
+            r.locationName ||
+            r.location_name ||
+            (typeof r.lat === "number" && typeof r.lng === "number"
+              ? findClosestBMKGRegion(r.lat, r.lng).region.name
+              : "Kota Bandung"),
           timeAgo: r.timeAgo || (r.created_at ? new Date(r.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "Baru saja"),
           status: (r.status === "terverifikasi" ? "Terverifikasi" : "Dalam Verifikasi") as any,
           confirmationsCount: r.confirmationsCount ?? r.konfirmasi_count ?? 0,
           konfirmasi_count: r.confirmationsCount ?? r.konfirmasi_count ?? 0,
+          foto_urls: r.foto_urls || [],
           lat: r.lat,
           lng: r.lng,
           userConfirmed: false,
@@ -276,6 +293,11 @@ export default function SiagaKitaApp() {
   const [showPushNotification, setShowPushNotification] = useState<boolean>(false);
   const [focusTimestamp, setFocusTimestamp] = useState<number>(0);
 
+  // Auth & Account Management
+  const { user, isGuest, logout, deleteAccount } = useAuth();
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+
   // Handlers
   const handleSelectEvacuationPoint = (pt: EvacuationPoint) => {
     setSelectedPoint(pt);
@@ -331,12 +353,17 @@ export default function SiagaKitaApp() {
       title: newRep.title || "Laporan Lapangan",
       description: newRep.description || "",
       deskripsi: newRep.description || "",
-      locationName: newRep.locationName || currentLocation,
+      locationName:
+        newRep.locationName ||
+        (typeof reportLat === "number" && typeof reportLng === "number"
+          ? findClosestBMKGRegion(reportLat, reportLng).region.name
+          : currentLocation),
       timeAgo: "Baru saja",
       status: "Dalam Verifikasi", // Crucial rule
       confirmationsCount: 1,
       lat: reportLat,
       lng: reportLng,
+      foto_urls: newRep.foto_urls || [],
     };
     setCommunityReports((prev) => [created, ...prev]);
 
@@ -349,7 +376,7 @@ export default function SiagaKitaApp() {
           deskripsi: newRep.description || newRep.title || "Laporan kondisi lapangan oleh warga",
           lat: reportLat,
           lng: reportLng,
-          foto_urls: [],
+          foto_urls: newRep.foto_urls || [],
         }),
       });
       if (res.ok) {
@@ -409,28 +436,6 @@ export default function SiagaKitaApp() {
           onDismiss={() => setShowPushNotification(false)}
         />
       )}
-
-      {/* Modals */}
-      <OfflineMapModal
-        isOpen={showOfflineModal}
-        onClose={() => setShowOfflineModal(false)}
-        isDownloaded={isMapOfflineDownloaded}
-        onDownloadComplete={() => setIsMapOfflineDownloaded(true)}
-        onRemoveDownload={() => setIsMapOfflineDownloaded(false)}
-      />
-
-      <CreateReportModal
-        isOpen={showCreateReportModal}
-        onClose={() => setShowCreateReportModal(false)}
-        onSubmit={handleCreateReport}
-        defaultLocationName={currentLocation}
-      />
-
-      <SayaAmanModal
-        isOpen={showSayaAmanModal}
-        onClose={() => setShowSayaAmanModal(false)}
-        userCoords={userCoords}
-      />
 
       {/* VIEWPORT MODE: DESIGN SYSTEM / TOKENS */}
       {viewportMode === "tokens" && (
@@ -775,27 +780,113 @@ export default function SiagaKitaApp() {
                 </div>
               )}
 
-              {/* SCREEN PENGATURAN & DIAGNOSTIK */}
+              {/* SCREEN PENGATURAN & PROFIL AKUN */}
               {currentTab === "pengaturan" && (
-                <div className="space-y-6 max-w-4xl">
+                <div className="space-y-6 max-w-4xl pb-12">
                   <div>
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                      Pengaturan & Status Aplikasi
+                      Pengaturan & Profil Akun
                     </h1>
                     <p className="text-xs text-[#68756E] mt-0.5">
-                      Kelola preferensi akun, penyimpanan offline, dan notifikasi Web Push.
+                      Kelola profil identitas, hak privasi (UU PDP), penyimpanan peta offline, dan notifikasi darurat.
                     </p>
                   </div>
 
+                  {/* KARTU PROFIL PENGGUNA */}
+                  <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F4F2]">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-base ring-4 ring-[#E5F5EA] shrink-0">
+                          {user?.nama ? user.nama.trim().slice(0, 2).toUpperCase() : "WG"}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-sm md:text-base font-bold text-[#17211D]">
+                              {user?.nama || "Pengguna Siaga"}
+                            </h2>
+                            <span
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                isGuest || user?.is_anonymous
+                                  ? "bg-[#FEF1E6] text-[#C96B10]"
+                                  : "bg-[#E5F5EA] text-[#176B4D]"
+                              }`}
+                            >
+                              {isGuest || user?.is_anonymous
+                                ? "Mode Tamu"
+                                : user?.role === "relawan"
+                                ? "Relawan Siaga"
+                                : user?.role === "admin"
+                                ? "Admin Wilayah"
+                                : "Pengguna Warga Terdaftar"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#68756E] mt-0.5">
+                            {user?.email || (isGuest ? "Sesi penjelajahan tamu terbatas" : "Tidak ada email")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isGuest || user?.is_anonymous ? (
+                          <a
+                            href="/login"
+                            className="py-2 px-3.5 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                          >
+                            <LogIn className="w-3.5 h-3.5" />
+                            <span>Daftar / Masuk Akun</span>
+                          </a>
+                        ) : (
+                          <button
+                            onClick={() => logout()}
+                            className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E] hover:text-[#17211D] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            <span>Keluar Sesi</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Detail Akun Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                          Status Identitas
+                        </span>
+                        <span className="font-semibold text-[#17211D] flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#176B4D]" />
+                          {isGuest || user?.is_anonymous ? "Tamu Sementara" : "Terverifikasi Aktif"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                          Wilayah Pantauan
+                        </span>
+                        <span className="font-semibold text-[#17211D]">
+                          {currentLocation}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                          Perlindungan Data
+                        </span>
+                        <span className="font-semibold text-[#176B4D]">
+                          UU PDP No. 27/2022
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LAYANAN OFFLINE & NOTIFIKASI */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
                       <h3 className="text-xs font-bold text-[#17211D]">Penyimpanan PWA Offline</h3>
                       <p className="text-xs text-[#68756E]">
-                        Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda.
+                        Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda untuk akses darurat tanpa internet.
                       </p>
                       <button
                         onClick={() => setShowOfflineModal(true)}
-                        className="py-2 px-4 rounded-[10px] bg-[#176B4D] text-white text-xs font-bold flex items-center gap-1.5"
+                        className="py-2 px-4 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <DownloadCloud className="w-4 h-4" />
                         <span>Kelola Peta Offline</span>
@@ -805,16 +896,47 @@ export default function SiagaKitaApp() {
                     <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
                       <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
                       <p className="text-xs text-[#68756E]">
-                        Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem.
+                        Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
                       </p>
                       <button
                         onClick={() => setShowPushNotification(true)}
-                        className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold"
+                        className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
                       >
                         Tes Kirim Notifikasi Push
                       </button>
                     </div>
                   </div>
+
+                  {/* ZONA BAHAYA: HAK PEMUSNAHAN DATA PRIBADI (UU PDP NO. 27 TAHUN 2022) */}
+                  {!isGuest && !user?.is_anonymous ? (
+                    <div className="bg-[#FFF8F8] rounded-[16px] border border-[#F9C1C1] p-5 shadow-sm space-y-3">
+                      <div className="flex items-center gap-2 text-[#D64545]">
+                        <AlertTriangle className="w-4 h-4" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider">
+                          Zona Bahaya: Hak Pemusnahan Data Pribadi (UU PDP)
+                        </h3>
+                      </div>
+                      <p className="text-xs text-[#68756E] leading-relaxed">
+                        Berdasarkan <strong>Pasal 8 & Pasal 43 UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP)</strong>, sebagai subjek data Anda berhak mengakhiri pemrosesan dan memusnahkan data pribadi Anda secara permanen. Menghapus akun akan memusnahkan akun, riwayat laporan warga, data foto/koordinat lapangan, dan preferensi Anda dari sistem kami tanpa dapat dipulihkan kembali.
+                      </p>
+                      <div className="pt-1">
+                        <button
+                          onClick={() => setShowDeleteAccountModal(true)}
+                          className="py-2 px-4 rounded-[10px] bg-[#D64545] hover:bg-[#B83838] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus Akun & Data Pribadi Permanen</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#F8FAF9] rounded-[16px] border border-[#E6EBE8] p-4 text-xs text-[#68756E] flex items-center justify-between">
+                      <span>Anda saat ini menggunakan akun tamu sementara. Tidak ada data profil pribadi permanen yang tersimpan di server.</span>
+                      <a href="/login" className="font-bold text-[#176B4D] hover:underline shrink-0 ml-3">
+                        Daftar Akun Warga &rarr;
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
             </main>
@@ -866,6 +988,67 @@ export default function SiagaKitaApp() {
           }}
           onDismiss={() => setShowPushNotification(false)}
         />
+      )}
+
+      {/* Modal Konfirmasi Hapus Akun Permanen (UU PDP) */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-[20px] bg-white p-6 shadow-2xl border border-[#CDD7D1]">
+            <div className="flex items-center gap-3 text-[#D64545] mb-3">
+              <div className="w-10 h-10 rounded-full bg-[#FDECEC] flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-[#D64545]" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#17211D]">
+                  Hapus Akun Permanen?
+                </h3>
+                <span className="text-[11px] text-[#68756E]">
+                  Hak Pemusnahan Data Pribadi (UU No. 27 Tahun 2022 / UU PDP)
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#68756E] leading-relaxed mb-4">
+              Tindakan ini akan <strong>menghapus permanen</strong> akun Anda beserta seluruh riwayat laporan lapangan, data profil, preferensi evakuasi, dan kontak darurat dari database SiagaKita. Data yang dihapus tidak dapat dipulihkan kembali.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F1F4F2]">
+              <button
+                type="button"
+                disabled={isDeletingAccount}
+                onClick={() => setShowDeleteAccountModal(false)}
+                className="px-4 py-2 text-xs font-bold text-[#68756E] hover:bg-[#F8FAF9] rounded-[10px] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAccount}
+                onClick={async () => {
+                  setIsDeletingAccount(true);
+                  const ok = await deleteAccount();
+                  if (!ok) {
+                    setIsDeletingAccount(false);
+                    alert("Gagal menghapus akun. Silakan coba lagi.");
+                  }
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#D64545] hover:bg-[#B83838] rounded-[10px] flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isDeletingAccount ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ya, Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

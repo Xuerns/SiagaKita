@@ -96,7 +96,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           password,
           nama: name,
           role,
-          region_id: location,
+          location,
         }),
       });
 

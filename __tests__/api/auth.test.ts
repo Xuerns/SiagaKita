@@ -8,6 +8,7 @@ const mockSignInAnonymously = vi.fn();
 const mockSignOut = vi.fn();
 const mockGetUser = vi.fn();
 const mockFrom = vi.fn();
+const mockDeleteUser = vi.fn();
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -30,6 +31,11 @@ vi.mock('@/lib/supabase/admin', () => ({
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     })),
+    auth: {
+      admin: {
+        deleteUser: mockDeleteUser,
+      },
+    },
   })),
 }));
 
@@ -39,6 +45,7 @@ import { POST as registerHandler } from '@/app/api/auth/register/route';
 import { POST as guestHandler } from '@/app/api/auth/guest/route';
 import { POST as logoutHandler } from '@/app/api/auth/logout/route';
 import { GET as meHandler } from '@/app/api/auth/me/route';
+import { DELETE as deleteAccountHandler } from '@/app/api/auth/delete-account/route';
 
 describe('Auth API Routes', () => {
   beforeEach(() => {
@@ -156,6 +163,44 @@ describe('Auth API Routes', () => {
       expect(json.user.nama).toBe('Dewi Lestari');
     });
 
+    it('Good Route: Berhasil mendaftar saat nama kota (non-UUID) dikirim di field region_id atau location', async () => {
+      mockSignUp.mockResolvedValueOnce({
+        data: {
+          user: { id: 'new-user-2', email: 'bandung@siagakita.id' },
+          session: null,
+        },
+        error: null,
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'bandung@siagakita.id',
+          password: 'strongPassword123!',
+          nama: 'Budi Bandung',
+          role: 'warga',
+          region_id: 'Kota Bandung', // Non-UUID legacy field
+          location: 'Kota Bandung',
+        }),
+      });
+
+      const res = await registerHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(mockSignUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            data: expect.objectContaining({
+              wilayah: 'Kota Bandung',
+            }),
+          }),
+        })
+      );
+    });
+
     it('Bad Route: Gagal jika kata sandi kurang dari 8 karakter', async () => {
       const req = new NextRequest('http://localhost:3000/api/auth/register', {
         method: 'POST',
@@ -265,6 +310,86 @@ describe('Auth API Routes', () => {
       expect(res.status).toBe(200);
       expect(json.isAuthenticated).toBe(false);
       expect(json.user).toBeNull();
+    });
+  });
+
+  // ==========================================
+  // DELETE /api/auth/delete-account
+  // ==========================================
+  describe('DELETE /api/auth/delete-account (Hak Hapus Akun Permanen UU PDP)', () => {
+    it('Good Route: Berhasil menghapus akun permanen dari auth & database', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { id: 'user-to-delete-1' } },
+        error: null,
+      });
+      mockDeleteUser.mockResolvedValueOnce({ error: null });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+
+      const res = await deleteAccountHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.message).toContain('UU PDP');
+      expect(mockDeleteUser).toHaveBeenCalledWith('user-to-delete-1');
+      expect(mockSignOut).toHaveBeenCalled();
+    });
+
+    it('Bad Route: Menolak (401) jika pengguna belum login', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'No session' },
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+
+      const res = await deleteAccountHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(401);
+      expect(json.error).toContain('Harap masuk terlebih dahulu');
+    });
+
+    it('Bad Route: Menolak (400) jika pengguna berada dalam mode tamu anonim', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { id: 'guest-user-1', is_anonymous: true } },
+        error: null,
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+
+      const res = await deleteAccountHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain('Mode tamu tidak memiliki akun');
+    });
+
+    it('Bad Route: Menangani error (500) jika Supabase Admin gagal menghapus akun', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { id: 'user-to-delete-2', is_anonymous: false } },
+        error: null,
+      });
+      mockDeleteUser.mockResolvedValueOnce({
+        error: { message: 'Database constraint violation' },
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/auth/delete-account', {
+        method: 'DELETE',
+      });
+
+      const res = await deleteAccountHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(json.error).toContain('Gagal menghapus akun');
     });
   });
 });

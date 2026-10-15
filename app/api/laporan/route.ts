@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createReportSchema } from '@/lib/validations';
-import { calculateHaversineDistance } from '@/lib/bmkg';
+import { calculateHaversineDistance, findClosestBMKGRegion } from '@/lib/bmkg';
 import { DEMO_COMMUNITY_REPORTS } from '@/lib/data/demo';
 import { checkRateLimit, sanitizeText, maskCoordinate } from '@/lib/security';
 
@@ -114,6 +114,8 @@ export async function GET(request: NextRequest) {
             distanceKm = Math.round(calculateHaversineDistance(userLat, userLng, repLat, repLng) * 10) / 10;
           }
 
+          const repLocation = findClosestBMKGRegion(repLat, repLng).region.name;
+
           return {
             id: r.id,
             // Tidak membocorkan user_id privat pengguna di feed publik
@@ -124,6 +126,8 @@ export async function GET(request: NextRequest) {
             title: r.tipe,
             description: r.deskripsi,
             deskripsi: r.deskripsi,
+            locationName: repLocation,
+            location_name: repLocation,
             foto_urls: r.foto_urls || [],
             status: r.status,
             konfirmasi_count: r.konfirmasi_count,
@@ -153,6 +157,8 @@ export async function GET(request: NextRequest) {
         category: rep.tipe,
         title: rep.tipe,
         description: rep.deskripsi,
+        locationName: findClosestBMKGRegion(rep.lat, rep.lng).region.name,
+        location_name: findClosestBMKGRegion(rep.lat, rep.lng).region.name,
         confirmationsCount: rep.konfirmasi_count,
       }));
     }

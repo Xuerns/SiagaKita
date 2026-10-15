@@ -10,7 +10,10 @@ import {
   Check, 
   LogOut,
   LogIn,
-  ChevronRight 
+  ChevronRight,
+  Trash2,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 
@@ -23,8 +26,10 @@ export function MobileProfileView({
   currentLocation,
   onOpenOfflineManager,
 }: MobileProfileViewProps) {
-  const { user, isGuest, logout } = useAuth();
+  const { user, isGuest, logout, deleteAccount } = useAuth();
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const initials = useMemo(() => {
     if (!user?.nama) return "TM";
@@ -165,18 +170,92 @@ export function MobileProfileView({
         {/* Logout item */}
         <div
           onClick={() => logout()}
-          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#FDECEC]/50 text-[#D64545]"
+          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F8FAF9] text-[#68756E]"
         >
           <div className="flex items-center gap-2.5">
-            <LogOut className="w-4 h-4 text-[#D64545]" />
+            <LogOut className="w-4 h-4 text-[#68756E]" />
             <div>
               <span className="font-semibold block">Keluar dari Akun</span>
-              <span className="text-[10px] text-[#D64545]/70">Hapus sesi login di perangkat ini</span>
+              <span className="text-[10px] text-[#929D96]">Akhiri sesi di perangkat ini</span>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#D64545]" />
+          <ChevronRight className="w-4 h-4 text-[#929D96]" />
         </div>
+
+        {/* Hak Hapus Akun Permanen (UU PDP) - Khusus Pengguna Terdaftar */}
+        {!isGuest && !user?.is_anonymous && (
+          <div
+            onClick={() => setShowDeleteModal(true)}
+            className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#FDECEC]/50 text-[#D64545] border-t border-[#F1F4F2]"
+          >
+            <div className="flex items-center gap-2.5">
+              <Trash2 className="w-4 h-4 text-[#D64545]" />
+              <div>
+                <span className="font-semibold block">Hapus Akun Permanen</span>
+                <span className="text-[10px] text-[#D64545]/70">Hak Pemusnahan Data Pribadi (UU PDP)</span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#D64545]" />
+          </div>
+        )}
       </div>
+
+      {/* Modal Konfirmasi Hapus Akun Mobile */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-sm rounded-[20px] bg-white p-5 shadow-2xl border border-[#CDD7D1]">
+            <div className="flex items-center gap-2.5 text-[#D64545] mb-2.5">
+              <div className="w-9 h-9 rounded-full bg-[#FDECEC] flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-[#D64545]" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-[#17211D]">Hapus Akun Permanen?</h4>
+                <span className="text-[10px] text-[#68756E]">Hak Privasi UU PDP No. 27 Tahun 2022</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#68756E] leading-relaxed mb-4">
+              Seluruh riwayat laporan, profil, kontak darurat, dan data akun Anda akan dihapus permanen dari database. Tindakan ini tidak dapat dibatalkan.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F1F4F2]">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setShowDeleteModal(false)}
+                className="px-3.5 py-1.5 text-xs font-bold text-[#68756E] hover:bg-[#F8FAF9] rounded-[8px] transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  const ok = await deleteAccount();
+                  if (!ok) {
+                    setIsDeleting(false);
+                    alert("Gagal menghapus akun. Silakan coba lagi.");
+                  }
+                }}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#D64545] hover:bg-[#B83838] rounded-[8px] flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Permanen</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
