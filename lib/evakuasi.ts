@@ -291,6 +291,8 @@ export function getCityCoordinates(location: string): { lat: number; lng: number
   return { lat: -6.9175, lng: 107.6191 };
 }
 
+export const getDefaultCoordinatesForLocation = getCityCoordinates;
+
 /**
  * Returns customized evacuation points for the given city/regency.
  * NOTE: Distance KM is ONLY calculated when the user is physically inside that city (< 40km).
