@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { RefreshCw } from "lucide-react";
 import { getAdm4ByLocation, findClosestBMKGRegion } from "@/lib/bmkg";
 import { hitungSkorBanjir } from "@/lib/risiko";
 import { getEvacuationPointsForLocation, getDefaultCoordinatesForLocation } from "@/lib/evakuasi";
@@ -36,13 +35,13 @@ import { DeviceViewportSwitcher, ViewportMode } from "@/components/preview/Devic
 import { DesignSystemViewer } from "@/components/preview/DesignSystemViewer";
 import { SayaAmanModal } from "@/components/ui/SayaAmanModal";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
+import { RiskAlertModal } from "@/components/ui/RiskAlertModal";
 import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
 import { useAuth } from "@/lib/context/AuthContext";
 import { LoginReminderOverlay } from "@/components/auth/LoginReminderOverlay";
 import { 
   mockCurrentWeather, 
   mockForecast5Days, 
-  mockActiveWarning, 
   mockEmergencyFullWarning, 
   mockEvacuationPoints, 
   mockCommunityReports 
@@ -57,13 +56,13 @@ import {
   AlertTriangle, 
   LogIn, 
   LogOut, 
-  Loader2 
+  Loader2,
+  RefreshCw
 } from "lucide-react";
-import { useAuth } from "@/lib/context/AuthContext";
 
 export default function SiagaKitaApp() {
   // Auth State
-  const { user, isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isGuest, isLoading: isAuthLoading, logout, deleteAccount } = useAuth();
   const isGuestMode = !isAuthLoading && (!isAuthenticated || isGuest);
 
   // Navigation & Viewport State
@@ -72,7 +71,7 @@ export default function SiagaKitaApp() {
   const [mobileTab, setMobileTab] = useState<MobileTab>("beranda");
   const [mobileSubScreen, setMobileSubScreen] = useState<"default" | "peringatan" | "rute">("default");
 
-  // App & Data States
+  // App & Data States - Menggunakan wilayah asli (default Kota Bandung) dengan data BMKG riil
   const [currentLocation, setCurrentLocation] = useState<string>("Kota Bandung");
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -100,7 +99,7 @@ export default function SiagaKitaApp() {
   const [forecastDays, setForecastDays] = useState<ForecastDay[]>(mockForecast5Days);
   const [isLoadingWeather, setIsLoadingWeather] = useState<boolean>(false);
 
-  // Fetch BMKG Weather dynamically
+  // Fetch BMKG Weather dynamically dari API BMKG riil
   const fetchWeather = useCallback(async (location: string, customAdm4?: string) => {
     try {
       setIsLoadingWeather(true);
@@ -183,10 +182,33 @@ export default function SiagaKitaApp() {
     fetchReports(preciseCoords?.lat, preciseCoords?.lng);
   };
 
+  // Muat data cuaca BMKG untuk lokasi saat ini
   useEffect(() => {
     fetchWeather(currentLocation);
     fetchReports(userCoords?.lat, userCoords?.lng);
   }, [currentLocation, userCoords, fetchWeather, fetchReports]);
+
+  // Deteksi lokasi asli pengguna secara otomatis via GPS browser jika diizinkan
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          const nearest = findClosestBMKGRegion(latitude, longitude);
+          if (nearest?.region) {
+            setCurrentLocation(nearest.region.name);
+            setUserCoords({ lat: latitude, lng: longitude, accuracy });
+            fetchWeather(nearest.region.name, nearest.region.adm4);
+          }
+        },
+        (err) => {
+          // Jika GPS ditolak atau timeout, tetap gunakan lokasi default (Kota Bandung)
+          console.info("Info: GPS browser tidak aktif, menggunakan lokasi awal:", err.message);
+        },
+        { timeout: 6000, maximumAge: 60000 }
+      );
+    }
+  }, [fetchWeather]);
 
   // Dynamic risk calculation based on BMKG weather condition & location
   const currentRisk = useMemo(() => {
@@ -303,11 +325,57 @@ export default function SiagaKitaApp() {
   const [showSayaAmanModal, setShowSayaAmanModal] = useState<boolean>(false);
   const [showPushNotification, setShowPushNotification] = useState<boolean>(false);
   const [focusTimestamp, setFocusTimestamp] = useState<number>(0);
-
-  // Auth & Account Management
-  const { user, isGuest, logout, deleteAccount } = useAuth();
+  // Account Deletion Modal
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState<boolean>(false);
+
+  // warningDismissed: true = user sudah konfirmasi "Saya Aman" → badge sidebar hilang & modal/notif tidak muncul lagi
+  const [warningDismissed, setWarningDismissed] = useState<boolean>(false);
+  // showRiskAlertModal: popup modal otomatis untuk risiko tinggi (siaga/awas)
+  const [showRiskAlertModal, setShowRiskAlertModal] = useState<boolean>(false);
+  // hasAutoShownAlert: agar alert hanya muncul sekali per sesi / per perubahan lokasi
+  const [hasAutoShownAlert, setHasAutoShownAlert] = useState<boolean>(false);
+
+  // Auto-show notifikasi berdasarkan level risiko setelah data cuaca selesai dimuat
+  useEffect(() => {
+    if (isLoadingWeather || warningDismissed) return;
+
+    const level = currentRisk.level;
+
+    if ((level === "siaga" || level === "awas") && !hasAutoShownAlert) {
+      // Risiko tinggi → tampilkan popup modal secara cepat & mulus (400ms)
+      const t = setTimeout(() => {
+        setShowRiskAlertModal(true);
+        setHasAutoShownAlert(true);
+      }, 400);
+      return () => clearTimeout(t);
+    }
+
+    if (level === "waspada" && !hasAutoShownAlert) {
+      // Risiko sedang → tampilkan web push notification (400ms)
+      const t = setTimeout(() => {
+        setShowPushNotification(true);
+        setHasAutoShownAlert(true);
+      }, 400);
+      return () => clearTimeout(t);
+    }
+  }, [currentRisk.level, isLoadingWeather, hasAutoShownAlert, warningDismissed]);
+
+  // Reset hasAutoShownAlert saat lokasi berubah agar notifikasi muncul kembali
+  useEffect(() => {
+    setHasAutoShownAlert(false);
+    setWarningDismissed(false);
+    setShowRiskAlertModal(false);
+    setShowPushNotification(false);
+  }, [currentLocation]);
+
+  // Handler konfirmasi Saya Aman → tutup semua peringatan & hilangkan badge
+  const handleSayaAmanConfirmed = () => {
+    setWarningDismissed(true);
+    setShowRiskAlertModal(false);
+    setShowPushNotification(false);
+    setShowSayaAmanModal(true);
+  };
 
   // Handlers
   const handleSelectEvacuationPoint = (pt: EvacuationPoint) => {
@@ -462,19 +530,9 @@ export default function SiagaKitaApp() {
         }}
         onTriggerEmergency={() => setShowEmergencyFullscreen(true)}
         onSimulatePushNotification={() => setShowPushNotification(true)}
+        onTriggerRiskAlert={() => setShowRiskAlertModal(true)}
       />
 
-      {/* Web Push Notification Banner Simulation */}
-      {showPushNotification && (
-        <NotificationBanner
-          warning={mockActiveWarning}
-          onOpenWarning={() => {
-            setShowPushNotification(false);
-            setShowEmergencyFullscreen(true);
-          }}
-          onDismiss={() => setShowPushNotification(false)}
-        />
-      )}
 
       {/* VIEWPORT MODE: DESIGN SYSTEM / TOKENS */}
       {viewportMode === "tokens" && (
@@ -515,7 +573,7 @@ export default function SiagaKitaApp() {
             <div className="flex-1 overflow-y-auto no-scrollbar">
               {mobileSubScreen === "peringatan" ? (
                 <MobilePeringatanView
-                  warning={mockActiveWarning}
+                  warning={dynamicWarning}
                   onBack={() => setMobileSubScreen("default")}
                   onOpenRoute={() => setMobileSubScreen("rute")}
                 />
@@ -584,7 +642,7 @@ export default function SiagaKitaApp() {
                   setMobileTab(tab);
                   setMobileSubScreen("default");
                 }}
-                warningCount={1}
+                warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
               />
             )}
           </div>
@@ -603,14 +661,22 @@ export default function SiagaKitaApp() {
             currentTab={currentTab}
             onSelectTab={(tab) => {
               if (tab === "peringatan") {
-                setShowEmergencyFullscreen(true);
+                // Klik ikon peringatan di sidebar → buka modal/detail peringatan aktif
+                const level = currentRisk.level;
+                if ((level === "siaga" || level === "awas") && !warningDismissed) {
+                  setShowRiskAlertModal(true);
+                } else if (level === "waspada" && !warningDismissed) {
+                  setShowPushNotification(true);
+                } else {
+                  setShowEmergencyFullscreen(true);
+                }
               } else if (tab === "tokens") {
                 setViewportMode("tokens");
               } else {
                 setCurrentTab(tab);
               }
             }}
-            warningCount={1}
+            warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
           />
 
           {/* Desktop Main Content Container */}
@@ -645,7 +711,7 @@ export default function SiagaKitaApp() {
 
                     {!isOnline && (
                       <div className="bg-[#FEF1E6] text-[#C96B10] px-3 py-1 rounded-[10px] border border-[#FBD6B5] text-xs font-semibold flex items-center gap-1.5">
-                        <span>Mode Offline Aktif (Menampilkan Cache Terakhir)</span>
+                        <span>Mode Offline</span>
                       </div>
                     )}
                   </div>
@@ -1056,12 +1122,19 @@ export default function SiagaKitaApp() {
         onRemoveDownload={() => setIsMapOfflineDownloaded(false)}
       />
 
+      {/* Web Push Notification — untuk risiko sedang (waspada) */}
       {showPushNotification && (
         <NotificationBanner
           warning={dynamicWarning}
           onOpenWarning={() => {
             setShowPushNotification(false);
-            setShowEmergencyFullscreen(true);
+            // Klik dari notifikasi → tampilkan detail lengkap
+            const level = currentRisk.level;
+            if (level === "siaga" || level === "awas") {
+              setShowRiskAlertModal(true);
+            } else {
+              setShowEmergencyFullscreen(true);
+            }
           }}
           onDismiss={() => setShowPushNotification(false)}
         />
@@ -1126,6 +1199,14 @@ export default function SiagaKitaApp() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Risk Alert Modal — card kecil/sedang untuk risiko tinggi (siaga/awas), singkat padat jelas */}
+      {showRiskAlertModal && !warningDismissed && (
+        <RiskAlertModal
+          warning={dynamicWarning}
+          onClose={() => setShowRiskAlertModal(false)}
+        />
       )}
     </div>
   );

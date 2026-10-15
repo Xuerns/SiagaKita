@@ -6,9 +6,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
-## Rule for implementation
-- Read docs/
-- Never commit .env, and creditials key
-- Always make unit test for new API (good rute & bad rute)
-
 <!-- END:nextjs-agent-rules -->

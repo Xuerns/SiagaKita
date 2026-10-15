@@ -131,7 +131,7 @@ export function LocationSelectorModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-[#17211D]">Pilih Lokasi & Cuaca</h2>
-              <p className="text-xs text-[#68756E]">Hubungkan data live BMKG berdasarkan GPS atau wilayah</p>
+              <p className="text-xs text-[#68756E]">Prakiraan cuaca dan risiko berbasis data resmi BMKG</p>
             </div>
           </div>
           <button
@@ -144,6 +144,7 @@ export function LocationSelectorModal({
 
         {/* Action Controls & GPS */}
         <div className="p-4 border-b border-[#F1F4F2] space-y-3">
+
           {/* GPS Locate Button */}
           <button
             onClick={handleGPSDetect}

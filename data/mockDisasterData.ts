@@ -1,16 +1,20 @@
 import { WeatherCurrent, ForecastDay, ActiveWarning, EvacuationPoint, CommunityReport, ChecklistItem } from "@/types";
 
+// Data cuaca awal / fallback default (kondisi normal, data dinamis akan dimuat dari API BMKG asli)
 export const mockCurrentWeather: WeatherCurrent = {
-  temp: 26,
-  condition: "Hujan Ringan",
-  location: "Kota Bogor",
-  forecastRange: "22° – 28°",
-  source: "Open-Meteo",
-  lastUpdated: "14 Okt 2026 · 10.15 WIB",
+  temp: 27,
+  condition: "Cerah Berawan",
+  location: "Kota Bandung",
+  forecastRange: "21° – 31°",
+  source: "BMKG",
+  lastUpdated: "Hari ini · 12.00 WIB",
+  precipitationMm: 0,
+  humidity: 68,
+  windSpeed: 10,
   todaySummary: {
-    condition: "Hujan sedang",
-    range: "22° – 28°",
-    timeWindow: "12:00 – 15:00",
+    condition: "Cerah berawan",
+    range: "21° – 31°",
+    timeWindow: "06:00 – 18:00",
   },
 };
 
@@ -46,6 +50,7 @@ export function getDynamicForecast5Days(baseDate: Date = new Date()): ForecastDa
 }
 
 export const mockForecast5Days: ForecastDay[] = getDynamicForecast5Days();
+
 
 export const mockActiveWarning: ActiveWarning = {
   id: "warn-01",
