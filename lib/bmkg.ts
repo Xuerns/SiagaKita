@@ -1,5 +1,5 @@
 import { WeatherCurrent, ForecastDay } from "@/types";
-import { mockCurrentWeather, mockForecast5Days } from "@/data/mockDisasterData";
+import { mockCurrentWeather, mockForecast5Days, getDynamicForecast5Days } from "@/data/mockDisasterData";
 
 export interface BMKGRegionInfo {
   name: string;
@@ -328,6 +328,40 @@ function getIndonesianDayName(date: Date, isToday: boolean): string {
   return days[date.getDay()];
 }
 
+// Parse local datetime string (e.g. "2026-10-15 13:00:00" or UTC ISO) safely to Date
+function parseLocalDate(localDatetimeStr?: string, utcDatetimeStr?: string): Date {
+  if (localDatetimeStr) {
+    const [datePart] = localDatetimeStr.split(" ");
+    if (datePart) {
+      const [year, month, day] = datePart.split("-").map(Number);
+      if (year && month && day) {
+        return new Date(year, month - 1, day, 12, 0, 0);
+      }
+    }
+  }
+  if (utcDatetimeStr) {
+    const d = new Date(utcDatetimeStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return new Date();
+}
+
+// WMO Weather code mapper for Open-Meteo fallback/enhancement
+export function mapWmoToCondition(code: number): { condition: string; rainChance: number } {
+  if (code === 0) return { condition: "Cerah", rainChance: 10 };
+  if (code === 1 || code === 2) return { condition: "Cerah Berawan", rainChance: 25 };
+  if (code === 3) return { condition: "Berawan", rainChance: 35 };
+  if (code === 45 || code === 48) return { condition: "Berkabut", rainChance: 20 };
+  if (code >= 51 && code <= 55) return { condition: "Hujan Ringan", rainChance: 60 };
+  if (code === 61) return { condition: "Hujan Ringan", rainChance: 65 };
+  if (code === 63) return { condition: "Hujan Sedang", rainChance: 75 };
+  if (code === 65) return { condition: "Hujan Lebat", rainChance: 90 };
+  if (code === 80) return { condition: "Hujan Ringan", rainChance: 60 };
+  if (code >= 81 && code <= 82) return { condition: "Hujan Sedang", rainChance: 80 };
+  if (code >= 95) return { condition: "Hujan Petir", rainChance: 90 };
+  return { condition: "Cerah Berawan", rainChance: 30 };
+}
+
 /**
  * Parses BMKG API response data into application WeatherCurrent and ForecastDay structures
  */
@@ -342,7 +376,7 @@ export function parseBMKGWeatherData(bmkgData: BMKGResponse): {
     throw new Error("Format data cuaca BMKG tidak valid atau kosong.");
   }
 
-  // Flatten if nested array of days
+  // Determine if nested array of days or flat items
   const isNested = Array.isArray(rawCuaca[0]);
   const flatItems: BMKGCuacaItem[] = isNested 
     ? (rawCuaca as BMKGCuacaItem[][]).flat()
@@ -407,7 +441,6 @@ export function parseBMKGWeatherData(bmkgData: BMKGResponse): {
     },
   };
 
-  // Build 3 to 5 day forecast
   const months = [
     "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
     "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
@@ -415,45 +448,82 @@ export function parseBMKGWeatherData(bmkgData: BMKGResponse): {
   
   const forecast: ForecastDay[] = [];
 
-  if (isNested) {
-    const dayArrays = rawCuaca as BMKGCuacaItem[][];
-    dayArrays.forEach((dayItems, idx) => {
-      if (!dayItems || dayItems.length === 0) return;
-      const first = dayItems[0];
-      const representative = dayItems.find(x => (x.weather_desc && x.weather_desc.includes("Hujan"))) || dayItems[Math.floor(dayItems.length / 2)] || first;
-      
-      const itemDate = new Date(first.datetime || first.local_datetime?.replace(" ", "T") || Date.now());
-      const temps = dayItems.map(x => x.t).filter((t): t is number => typeof t === "number");
-      const dMin = temps.length > 0 ? Math.min(...temps) : 22;
-      const dMax = temps.length > 0 ? Math.max(...temps) : 30;
+  // Group raw items into daily arrays if flat
+  const dayGroups: BMKGCuacaItem[][] = isNested 
+    ? (rawCuaca as BMKGCuacaItem[][])
+    : (() => {
+        const groups: Record<string, BMKGCuacaItem[]> = {};
+        flatItems.forEach((item) => {
+          const key = item.local_datetime?.split(" ")[0] || item.datetime?.split("T")[0] || "unknown";
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+        });
+        return Object.values(groups);
+      })();
 
-      // Approximate rain chance based on weather description
-      const cond = representative.weather_desc || "Berawan";
-      let rainChance = 20;
-      if (cond.includes("Lebat") || cond.includes("Petir")) rainChance = 90;
-      else if (cond.includes("Sedang")) rainChance = 75;
-      else if (cond.includes("Ringan") || cond.includes("Hujan")) rainChance = 60;
-      else if (cond.includes("Berawan")) rainChance = 35;
+  dayGroups.forEach((dayItems, idx) => {
+    if (!dayItems || dayItems.length === 0) return;
+    const first = dayItems[0];
+    const representative =
+      dayItems.find((x) => x.weather_desc && x.weather_desc.includes("Hujan")) ||
+      dayItems[Math.floor(dayItems.length / 2)] ||
+      first;
+
+    const itemDate = parseLocalDate(first.local_datetime, first.datetime);
+    const temps = dayItems
+      .map((x) => x.t)
+      .filter((t): t is number => typeof t === "number" && !isNaN(t));
+    const dMin = temps.length > 0 ? Math.min(...temps) : 22;
+    const dMax = temps.length > 0 ? Math.max(...temps) : 30;
+
+    // Approximate rain chance based on weather description
+    const cond = representative.weather_desc || "Berawan";
+    let rainChance = 20;
+    if (cond.includes("Lebat") || cond.includes("Petir")) rainChance = 90;
+    else if (cond.includes("Sedang")) rainChance = 75;
+    else if (cond.includes("Ringan") || cond.includes("Hujan")) rainChance = 60;
+    else if (cond.includes("Berawan")) rainChance = 35;
+
+    forecast.push({
+      id: `bmkg-day-${idx + 1}`,
+      dayName: getIndonesianDayName(itemDate, idx === 0),
+      dateStr: `${itemDate.getDate()} ${months[itemDate.getMonth()]}`,
+      condition: cond,
+      tempMin: dMin,
+      tempMax: dMax,
+      rainChance,
+    });
+  });
+
+  // Ensure consecutive calendar dates up to 5 days
+  if (forecast.length < 5) {
+    let lastDate = new Date();
+    if (dayGroups.length > 0 && dayGroups[dayGroups.length - 1]?.[0]) {
+      const lastDayFirst = dayGroups[dayGroups.length - 1][0];
+      lastDate = parseLocalDate(lastDayFirst.local_datetime, lastDayFirst.datetime);
+    }
+
+    const lastForecast = forecast[forecast.length - 1];
+    const baseMin = lastForecast?.tempMin || 22;
+    const baseMax = lastForecast?.tempMax || 30;
+
+    let dayOffset = 1;
+    while (forecast.length < 5) {
+      const nextDate = new Date(lastDate);
+      nextDate.setDate(lastDate.getDate() + dayOffset);
+      const idx = forecast.length;
 
       forecast.push({
         id: `bmkg-day-${idx + 1}`,
-        dayName: getIndonesianDayName(itemDate, idx === 0),
-        dateStr: `${itemDate.getDate()} ${months[itemDate.getMonth()]}`,
-        condition: cond,
-        tempMin: dMin,
-        tempMax: dMax,
-        rainChance,
+        dayName: getIndonesianDayName(nextDate, false),
+        dateStr: `${nextDate.getDate()} ${months[nextDate.getMonth()]}`,
+        condition: idx === 3 ? "Cerah Berawan" : "Hujan Ringan",
+        tempMin: baseMin + (idx % 2 === 0 ? 0 : -1),
+        tempMax: baseMax + (idx % 2 === 0 ? 1 : 0),
+        rainChance: idx === 3 ? 30 : 65,
       });
-    });
-  }
-
-  // If forecast has fewer than 5 days, backfill from mockForecast5Days to ensure a full 5-day UI strip
-  if (forecast.length < 5) {
-    mockForecast5Days.forEach((mockDay, i) => {
-      if (!forecast[i]) {
-        forecast.push(mockDay);
-      }
-    });
+      dayOffset++;
+    }
   }
 
   return { weather, forecast };
@@ -461,7 +531,7 @@ export function parseBMKGWeatherData(bmkgData: BMKGResponse): {
 
 /**
  * Fetch BMKG weather forecast for a given adm4 (kode wilayah tingkat IV)
- * Example default: 32.71.01.1001 (Bogor Selatan, Kota Bogor) or 31.71.03.1001 (Jakarta Pusat)
+ * Enhances with Open-Meteo for 5-day continuous weather prediction.
  */
 export async function getBMKGWeather(adm4: string = "32.71.01.1001"): Promise<{
   weather: WeatherCurrent;
@@ -475,7 +545,6 @@ export async function getBMKGWeather(adm4: string = "32.71.01.1001"): Promise<{
         "Accept": "application/json",
         "User-Agent": "SiagaKita-WeatherClient/1.0",
       },
-      // Next.js caching: revalidate every 5 minutes (300 seconds)
       next: { revalidate: 300 },
     });
 
@@ -485,6 +554,61 @@ export async function getBMKGWeather(adm4: string = "32.71.01.1001"): Promise<{
 
     const data: BMKGResponse = await response.json();
     const parsed = parseBMKGWeatherData(data);
+
+    // Enrich days 4 & 5 using Open-Meteo based on BMKG region coordinates
+    const lokasi = data.data?.[0]?.lokasi || data.lokasi;
+    const lat = lokasi?.lat;
+    const lon = lokasi?.lon;
+
+    if (lat && lon) {
+      try {
+        const omUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FJakarta&forecast_days=5`;
+        const omRes = await fetch(omUrl, {
+          headers: { Accept: "application/json" },
+          next: { revalidate: 600 },
+        });
+
+        if (omRes.ok) {
+          const omData = await omRes.json();
+          const times: string[] = omData.daily?.time || [];
+          const wCodes: number[] = omData.daily?.weather_code || [];
+          const maxTemps: number[] = omData.daily?.temperature_2m_max || [];
+          const minTemps: number[] = omData.daily?.temperature_2m_min || [];
+          const rainProbs: number[] = omData.daily?.precipitation_probability_max || [];
+
+          const months = [
+            "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+            "Jul", "Agt", "Sep", "Okt", "Nov", "Des"
+          ];
+
+          // Overwrite days 3 & 4 (the 4th and 5th items) with real Open-Meteo data for this location
+          for (let i = 3; i < 5 && i < times.length; i++) {
+            const [y, m, d] = times[i].split("-").map(Number);
+            const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+            const wInfo = mapWmoToCondition(wCodes[i] ?? 1);
+
+            const enhancedDay: ForecastDay = {
+              id: `bmkg-day-${i + 1}`,
+              dayName: getIndonesianDayName(dateObj, false),
+              dateStr: `${dateObj.getDate()} ${months[dateObj.getMonth()]}`,
+              condition: wInfo.condition,
+              tempMin: Math.round(minTemps[i] ?? 22),
+              tempMax: Math.round(maxTemps[i] ?? 31),
+              rainChance: Math.round(rainProbs[i] ?? wInfo.rainChance),
+            };
+
+            if (parsed.forecast[i]) {
+              parsed.forecast[i] = enhancedDay;
+            } else {
+              parsed.forecast.push(enhancedDay);
+            }
+          }
+        }
+      } catch (omErr) {
+        console.warn("Gagal memperkaya prakiraan hari ke-4 & 5 dengan Open-Meteo:", omErr);
+      }
+    }
+
     return {
       weather: parsed.weather,
       forecast: parsed.forecast,
@@ -498,7 +622,7 @@ export async function getBMKGWeather(adm4: string = "32.71.01.1001"): Promise<{
         source: "BMKG",
         lastUpdated: formatIndonesianTimestamp(new Date()),
       },
-      forecast: mockForecast5Days,
+      forecast: getDynamicForecast5Days(),
       source: "Fallback",
     };
   }

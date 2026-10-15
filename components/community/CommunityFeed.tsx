@@ -159,14 +159,16 @@ export function CommunityFeed({
               </button>
 
               <button
-                onClick={() => onConfirmReport(report.id)}
+                onClick={() => !report.userConfirmed && onConfirmReport(report.id)}
+                disabled={report.userConfirmed}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-[8px] transition-colors ${
                   report.userConfirmed
-                    ? "bg-[#E5F5EA] text-[#176B4D] border border-[#CDD7D1]"
-                    : "bg-[#F8FAF9] hover:bg-[#F1F4F2] text-[#68756E] border border-[#E6EBE8]"
+                    ? "bg-[#E5F5EA] text-[#176B4D] border border-[#CDD7D1] cursor-default opacity-95"
+                    : "bg-[#F8FAF9] hover:bg-[#F1F4F2] text-[#68756E] border border-[#E6EBE8] cursor-pointer active:scale-95"
                 }`}
+                title={report.userConfirmed ? "Anda telah mengonfirmasi laporan ini (hanya 1 kali)" : "Konfirmasi laporan ini"}
               >
-                <ThumbsUp className="w-3.5 h-3.5" />
+                <ThumbsUp className={`w-3.5 h-3.5 ${report.userConfirmed ? "fill-[#176B4D]" : ""}`} />
                 <span>
                   {report.userConfirmed ? "Dikonfirmasi" : "Konfirmasi"} (
                   {report.confirmationsCount})

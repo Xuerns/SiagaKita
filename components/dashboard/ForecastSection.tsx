@@ -17,7 +17,7 @@ export function ForecastSection({ forecast }: { forecast: ForecastDay[] }) {
           <h3 className="text-xs md:text-sm font-bold text-[#17211D]">
             Prakiraan Cuaca 5 Hari ke Depan
           </h3>
-          <span className="text-[10px] text-[#929D96]">Sumber: Open-Meteo & BMKG</span>
+          <span className="text-[10px] text-[#929D96]">Sumber: BMKG & Open-Meteo</span>
         </div>
         <button className="text-[11px] font-semibold text-[#176B4D] hover:underline flex items-center gap-1">
           <span>Lihat detail</span>
@@ -26,7 +26,7 @@ export function ForecastSection({ forecast }: { forecast: ForecastDay[] }) {
       </div>
 
       <div className="grid grid-cols-5 gap-2 pt-2">
-        {forecast.map((day) => (
+        {forecast.slice(0, 5).map((day) => (
           <div
             key={day.id}
             className="flex flex-col items-center justify-between p-2 rounded-[12px] bg-[#F8FAF9] border border-[#E6EBE8] text-center hover:bg-[#F1F8F3] hover:border-[#CDD7D1] transition-all"

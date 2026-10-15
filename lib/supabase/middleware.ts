@@ -55,6 +55,8 @@ export async function updateSession(request: NextRequest) {
     pathname === '/manifest.webmanifest' ||
     pathname === '/favicon.ico';
 
+  const isAnonymous = Boolean(user?.is_anonymous);
+
   // 1. Jika belum login dan mencoba mengakses dashboard atau rute terproteksi:
   if (!user && !isAuthPage && !isPublicRoute) {
     const loginUrl = new URL('/login', request.url);
@@ -68,8 +70,8 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse;
   }
 
-  // 2. Jika sudah login dan mencoba membuka halaman login atau register:
-  if (user && isAuthPage) {
+  // 2. Jika sudah login akun tetap (BUKAN tamu/anonymous) dan mencoba membuka halaman login atau register:
+  if (user && !isAnonymous && isAuthPage) {
     const homeUrl = new URL('/', request.url);
     const redirectResponse = NextResponse.redirect(homeUrl);
     supabaseResponse.cookies.getAll().forEach((c) => {

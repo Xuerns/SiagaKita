@@ -20,13 +20,34 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // 1. Pastikan pengguna telah terautentikasi
+    // 1. Pastikan pengguna terautentikasi (atau buat sesi tamu anonim jika belum login)
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        const { data: anonData } = await supabase.auth.signInAnonymously();
+        if (anonData?.user) {
+          currentUser = anonData.user;
+          try {
+            const adminClient = createAdminClient();
+            await adminClient.from('profiles').upsert({
+              id: currentUser.id,
+              nama: 'Tamu ' + currentUser.id.substring(0, 6).toUpperCase(),
+              role: 'warga',
+            });
+          } catch {
+            // Abaikan jika profil sudah ada
+          }
+        }
+      } catch {
+        // Abaikan jika anonymous sign-in tidak diaktifkan
+      }
+    }
+
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Harap masuk terlebih dahulu untuk memberikan konfirmasi laporan.' },
         { status: 401 }
@@ -34,7 +55,7 @@ export async function POST(
     }
 
     // 2. Rate Limiting: Maksimal 20 konfirmasi per menit per user
-    const rateCheck = checkRateLimit(`confirm:${user.id}`, 20, 60);
+    const rateCheck = checkRateLimit(`confirm:${currentUser.id}`, 20, 60);
     if (!rateCheck.success) {
       return NextResponse.json(
         { error: `Terlalu banyak permintaan konfirmasi. Silakan coba lagi dalam ${rateCheck.resetSeconds} detik.` },
@@ -47,17 +68,8 @@ export async function POST(
       );
     }
 
-    // 3. Validasi vote jika ada di body
-    let voteValue = 1;
-    try {
-      const body = await request.json();
-      const parsed = confirmReportSchema.safeParse(body);
-      if (parsed.success) {
-        voteValue = parsed.data.vote;
-      }
-    } catch {
-      // Body opsional, default vote = 1 (konfirmasi benar)
-    }
+    // 3. Like hanya positif (+1), tidak ada dislike
+    const voteValue = 1;
 
     const adminClient = createAdminClient();
 
@@ -76,7 +88,7 @@ export async function POST(
     }
 
     // 5. Pengguna tidak diperbolehkan mengonfirmasi laporannya sendiri
-    if (report.user_id === user.id) {
+    if (report.user_id === currentUser.id) {
       return NextResponse.json(
         { error: 'Anda tidak dapat mengonfirmasi laporan yang Anda buat sendiri.' },
         { status: 400 }
@@ -88,7 +100,7 @@ export async function POST(
       .from('report_confirmations')
       .select('*')
       .eq('report_id', reportId)
-      .eq('user_id', user.id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (existingVote) {
@@ -103,7 +115,7 @@ export async function POST(
       .from('report_confirmations')
       .insert({
         report_id: reportId,
-        user_id: user.id,
+        user_id: currentUser.id,
         vote: voteValue,
       });
 
