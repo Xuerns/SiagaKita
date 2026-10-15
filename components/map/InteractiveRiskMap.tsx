@@ -443,8 +443,69 @@ export function InteractiveRiskMap({
           markersRef.current.push(marker);
         });
       }
+
+      // Add Community Report Markers when activeLayer === "laporan"
+      if (activeLayer === "laporan") {
+        const categoryStyle: Record<string, { bg: string; emoji: string }> = {
+          "Banjir":         { bg: "#2563EB", emoji: "🌊" },
+          "Sungai Naik":    { bg: "#3983B9", emoji: "💧" },
+          "Longsor":        { bg: "#92400E", emoji: "⛰️" },
+          "Jalan Terputus": { bg: "#D97706", emoji: "🚧" },
+          "Butuh Bantuan":  { bg: "#DC2626", emoji: "🆘" },
+        };
+
+        const validReports = communityReports.filter((r) => r.lat && r.lng);
+
+        validReports.forEach((rep) => {
+          const tipe = rep.category || rep.tipe || "Banjir";
+          const style = categoryStyle[tipe] || { bg: "#64748B", emoji: "⚠️" };
+          const isVerified = rep.status === "Terverifikasi" || rep.status === "terverifikasi";
+          const label = rep.title || rep.tipe || "Laporan Warga";
+          const timeStr = rep.timeAgo || "";
+          const konfirmasi = rep.confirmationsCount ?? rep.konfirmasi_count ?? 0;
+
+          const markerEl = document.createElement("div");
+          markerEl.className = "cursor-pointer flex flex-col items-center select-none z-20 hover:z-30 group";
+          markerEl.innerHTML = `
+            <div class="bg-white/97 border border-[#E6EBE8] shadow-lg rounded-[10px] px-2.5 py-1.5 mb-1 max-w-[170px] text-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 whitespace-nowrap">
+              <span class="text-[10px] font-bold text-[#17211D] block truncate">${label}</span>
+              <div class="flex items-center justify-center gap-1 mt-0.5">
+                <span class="text-[9px] ${isVerified ? "text-[#176B4D] font-bold" : "text-[#929D96]"}">
+                  ${isVerified ? "✓ Terverifikasi" : "Dalam Verifikasi"}
+                </span>
+              </div>
+              <span class="text-[9px] text-[#929D96]">👍 ${konfirmasi} konfirmasi${timeStr ? ` • ${timeStr}` : ""}</span>
+            </div>
+            <div class="w-9 h-9 rounded-full border-[3px] border-white shadow-xl flex items-center justify-center text-base transition-transform group-hover:scale-110"
+                 style="background-color: ${style.bg}">
+              ${style.emoji}
+            </div>
+            <div class="w-1.5 h-2.5 rounded-b-sm" style="background-color: ${style.bg}"></div>
+          `;
+
+          const marker = new maplibregl.Marker({
+            element: markerEl,
+            anchor: "bottom",
+          })
+            .setLngLat([rep.lng!, rep.lat!])
+            .addTo(mapRef.current);
+
+          markersRef.current.push(marker);
+        });
+
+        // Fit map to show all report markers
+        if (validReports.length > 0 && mapRef.current) {
+          const bounds = new maplibregl.LngLatBounds();
+          validReports.forEach((r) => bounds.extend([r.lng!, r.lat!]));
+          mapRef.current.fitBounds(bounds, {
+            padding: 80,
+            maxZoom: 15,
+            duration: 800,
+          });
+        }
+      }
     });
-  }, [evacuationPoints, selectedPointId, locationName, userCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords, activeLayer]);
+  }, [evacuationPoints, communityReports, selectedPointId, locationName, userCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords, activeLayer]);
 
   // 6. Smoothly pan/center map ONLY when an evacuation point is explicitly clicked/selected by user
   const prevFocusTimestampRef = useRef<number>(focusTimestamp || 0);
@@ -633,6 +694,26 @@ export function InteractiveRiskMap({
             <div className="flex items-center gap-1.5 pt-0.5">
               <span className="w-3.5 h-1 rounded bg-[#2563EB]" />
               <span className="font-semibold text-[#2563EB]">Rute Jalan Raya (OSRM)</span>
+            </div>
+          )}
+
+          {activeLayer === "laporan" && (
+            <div className="space-y-1 pt-0.5 border-t border-[#F1F4F2]">
+              <div className="text-[9px] font-bold text-[#68756E] uppercase tracking-wide mb-0.5">Jenis Laporan:</div>
+              {[
+                { bg: "#2563EB", emoji: "🌊", label: "Banjir" },
+                { bg: "#D97706", emoji: "🚧", label: "Jalan Terputus" },
+                { bg: "#DC2626", emoji: "🆘", label: "Butuh Bantuan" },
+                { bg: "#92400E", emoji: "⛰️", label: "Longsor" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full border-2 border-white shadow flex items-center justify-center text-[9px]"
+                        style={{ backgroundColor: item.bg }}>
+                    {item.emoji}
+                  </span>
+                  <span className="text-[10px]">{item.label}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

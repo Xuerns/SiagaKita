@@ -8,7 +8,8 @@ import {
   Eye, 
   AlertCircle, 
   CheckCircle2, 
-  Filter 
+  Filter,
+  RefreshCw 
 } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { VerificationBadge } from "../ui/Badge";
@@ -19,6 +20,8 @@ interface CommunityFeedProps {
   onOpenCreateModal: () => void;
   onNavigateToMap: (report: CommunityReport) => void;
   onConfirmReport: (reportId: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function CommunityFeed({
@@ -26,6 +29,8 @@ export function CommunityFeed({
   onOpenCreateModal,
   onNavigateToMap,
   onConfirmReport,
+  onRefresh,
+  isRefreshing = false,
 }: CommunityFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -68,13 +73,27 @@ export function CommunityFeed({
           />
         </div>
 
-        <button
-          onClick={onOpenCreateModal}
-          className="py-2.5 px-4 bg-[#176B4D] hover:bg-[#104A35] text-white text-xs font-bold rounded-[10px] flex items-center justify-center gap-1.5 shadow-sm transition-all shrink-0 active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Buat Laporan Kondisi</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="py-2.5 px-3.5 bg-white hover:bg-[#F8FAF9] active:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] text-xs font-bold rounded-[10px] flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+              title="Segarkan daftar laporan warga dari database"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{isRefreshing ? "Memuat..." : "Refresh"}</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenCreateModal}
+            className="py-2.5 px-4 bg-[#176B4D] hover:bg-[#104A35] text-white text-xs font-bold rounded-[10px] flex items-center justify-center gap-1.5 shadow-sm transition-all shrink-0 active:scale-[0.98] cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Buat Laporan Kondisi</span>
+          </button>
+        </div>
       </div>
 
       {/* Category Filter Chips */}
@@ -158,12 +177,22 @@ export function CommunityFeed({
         ))}
 
         {filteredReports.length === 0 && (
-          <div className="col-span-full py-12 text-center bg-white rounded-[16px] border border-[#E6EBE8] p-8">
-            <AlertCircle className="w-8 h-8 text-[#929D96] mx-auto mb-2" />
+          <div className="col-span-full py-12 text-center bg-white rounded-[16px] border border-[#E6EBE8] p-8 flex flex-col items-center">
+            <AlertCircle className="w-8 h-8 text-[#929D96] mb-2" />
             <h4 className="text-sm font-bold text-[#17211D]">Belum Ada Laporan</h4>
-            <p className="text-xs text-[#68756E] mt-1">
-              Tidak ada laporan pada kategori ini di wilayah Anda saat ini.
+            <p className="text-xs text-[#68756E] mt-1 max-w-sm">
+              Tidak ada laporan aktif pada kategori ini di wilayah Anda saat ini.
             </p>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="mt-4 px-4 py-2 bg-[#F8FAF9] hover:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] rounded-[10px] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span>{isRefreshing ? "Memeriksa data..." : "Segarkan Data"}</span>
+              </button>
+            )}
           </div>
         )}
       </div>

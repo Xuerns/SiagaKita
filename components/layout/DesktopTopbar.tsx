@@ -19,6 +19,7 @@ interface DesktopTopbarProps {
   isOnline: boolean;
   onToggleOnline: () => void;
   onOpenNotifications: () => void;
+  onOpenProfile?: () => void;
 }
 
 export function DesktopTopbar({

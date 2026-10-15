@@ -75,6 +75,75 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
         expect(String(json.reports[0].lat).split('.')[1]?.length ?? 0).toBeLessThanOrEqual(3);
       }
     });
+    it('Good Route: Mengembalikan array kosong jika laporan di DB telah dihapus (tidak fallback ke data demo)', async () => {
+      const { createClient } = await import('@/lib/supabase/server');
+      (createClient as any).mockResolvedValueOnce({
+        auth: { getUser: mockGetUser },
+        from: vi.fn(() => ({
+          select: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({
+            data: [],
+            error: null,
+          }),
+        })),
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/laporan', {
+        method: 'GET',
+      });
+
+      const res = await getReportsHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.reports).toEqual([]);
+      expect(json.total).toBe(0);
+    });
+
+    it('Good Route: Berhasil mem-parsing koordinat presisi dari PostGIS geom', async () => {
+      const { createClient } = await import('@/lib/supabase/server');
+      (createClient as any).mockResolvedValueOnce({
+        auth: { getUser: mockGetUser },
+        from: vi.fn(() => ({
+          select: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'rep-bandung-1',
+                user_id: 'user-bandung',
+                tipe: 'Banjir',
+                deskripsi: 'Banjir di Pasteur Bandung',
+                foto_urls: [],
+                geom: 'SRID=4326;POINT(107.6098 -6.9175)',
+                status: 'belum_terverifikasi',
+                konfirmasi_count: 0,
+                created_at: new Date().toISOString(),
+                expires_at: new Date(Date.now() + 3600000).toISOString(),
+              },
+            ],
+            error: null,
+          }),
+          in: vi.fn().mockResolvedValue({ data: [{ id: 'user-bandung', nama: 'Asep' }], error: null }),
+        })),
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/laporan', {
+        method: 'GET',
+      });
+
+      const res = await getReportsHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.reports.length).toBe(1);
+      expect(json.reports[0].lat).toBe(-6.917);
+      expect(json.reports[0].lng).toBe(107.61);
+    });
   });
 
   // ==========================================

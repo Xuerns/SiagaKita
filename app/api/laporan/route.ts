@@ -6,6 +6,47 @@ import { calculateHaversineDistance } from '@/lib/bmkg';
 import { DEMO_COMMUNITY_REPORTS } from '@/lib/data/demo';
 import { checkRateLimit, sanitizeText, maskCoordinate } from '@/lib/security';
 
+// Helper untuk mem-parsing koordinat dari PostGIS geom (WKB Hex / GeoJSON / WKT)
+function parseGeom(geom: any): { lat: number; lng: number } | null {
+  if (!geom) return null;
+  if (typeof geom === 'object' && Array.isArray(geom.coordinates)) {
+    const lng = Number(geom.coordinates[0]);
+    const lat = Number(geom.coordinates[1]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+  if (typeof geom === 'string') {
+    if (geom.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(geom);
+        if (Array.isArray(parsed.coordinates)) {
+          const lng = Number(parsed.coordinates[0]);
+          const lat = Number(parsed.coordinates[1]);
+          if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+        }
+      } catch {}
+    }
+    const match = geom.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+    if (match) {
+      const lng = parseFloat(match[1]);
+      const lat = parseFloat(match[2]);
+      if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+    }
+    if (/^[0-9a-fA-F]+$/.test(geom) && geom.length >= 42) {
+      try {
+        const buf = Buffer.from(geom, 'hex');
+        const isLittleEndian = buf.readUInt8(0) === 1;
+        const type = isLittleEndian ? buf.readUInt32LE(1) : buf.readUInt32BE(1);
+        const hasSrid = (type & 0x20000000) !== 0;
+        const offset = hasSrid ? 9 : 5;
+        const lng = isLittleEndian ? buf.readDoubleLE(offset) : buf.readDoubleBE(offset);
+        const lat = isLittleEndian ? buf.readDoubleLE(offset + 8) : buf.readDoubleBE(offset + 8);
+        if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+      } catch {}
+    }
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -25,6 +66,7 @@ export async function GET(request: NextRequest) {
         tipe,
         deskripsi,
         foto_urls,
+        geom,
         status,
         konfirmasi_count,
         created_at,
@@ -40,62 +82,70 @@ export async function GET(request: NextRequest) {
 
     const { data: dbReports, error } = await query;
 
-    let reports = [];
+    let reports: any[] = [];
 
-    if (!error && dbReports && dbReports.length > 0) {
-      // Ambil profil nama pembuat untuk melengkapi data feed
-      const userIds = Array.from(new Set(dbReports.map((r) => r.user_id)));
-      let profileMap: Record<string, string> = {};
+    if (!error && dbReports) {
+      if (dbReports.length > 0) {
+        // Ambil profil nama pembuat untuk melengkapi data feed
+        const userIds = Array.from(new Set(dbReports.map((r) => r.user_id)));
+        let profileMap: Record<string, string> = {};
 
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, nama')
-          .in('id', userIds);
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, nama')
+            .in('id', userIds);
 
-        if (profiles) {
-          profileMap = Object.fromEntries(profiles.map((p) => [p.id, p.nama || 'Warga']));
+          if (profiles) {
+            profileMap = Object.fromEntries(profiles.map((p) => [p.id, p.nama || 'Warga']));
+          }
         }
-      }
 
-      reports = dbReports.map((r) => {
-        // Koordinat diburamkan ~100m sesuai mandat privasi UU PDP (PRD 14.2)
-        const repLat = maskCoordinate(-6.2345);
-        const repLng = maskCoordinate(106.8631);
+        reports = dbReports.map((r) => {
+          // Ambil koordinat nyata dari geom PostGIS, lalu diburamkan ~100m sesuai mandat privasi UU PDP (PRD 14.2)
+          const coords = parseGeom(r.geom);
+          const rawLat = coords?.lat ?? (r as any).lat ?? -6.2345;
+          const rawLng = coords?.lng ?? (r as any).lng ?? 106.8631;
+          const repLat = maskCoordinate(rawLat);
+          const repLng = maskCoordinate(rawLng);
 
-        let distanceKm = 0;
+          let distanceKm = 0;
+          if (userLat !== null && userLng !== null) {
+            distanceKm = Math.round(calculateHaversineDistance(userLat, userLng, repLat, repLng) * 10) / 10;
+          }
+
+          return {
+            id: r.id,
+            // Tidak membocorkan user_id privat pengguna di feed publik
+            user_name: profileMap[r.user_id] || 'Warga',
+            userName: profileMap[r.user_id] || 'Warga',
+            category: r.tipe,
+            tipe: r.tipe,
+            title: r.tipe,
+            description: r.deskripsi,
+            deskripsi: r.deskripsi,
+            foto_urls: r.foto_urls || [],
+            status: r.status,
+            konfirmasi_count: r.konfirmasi_count,
+            confirmationsCount: r.konfirmasi_count,
+            created_at: r.created_at,
+            expires_at: r.expires_at,
+            lat: repLat,
+            lng: repLng,
+            jarak_km: distanceKm,
+          };
+        });
+
+        // Filter berdasarkan radius jarak jika koordinat pengguna diberikan
         if (userLat !== null && userLng !== null) {
-          distanceKm = Math.round(calculateHaversineDistance(userLat, userLng, repLat, repLng) * 10) / 10;
+          reports = reports.filter((r) => r.jarak_km <= radiusKm);
         }
-
-        return {
-          id: r.id,
-          // Tidak membocorkan user_id privat pengguna di feed publik
-          user_name: profileMap[r.user_id] || 'Warga',
-          userName: profileMap[r.user_id] || 'Warga',
-          category: r.tipe,
-          tipe: r.tipe,
-          title: r.tipe,
-          description: r.deskripsi,
-          deskripsi: r.deskripsi,
-          foto_urls: r.foto_urls || [],
-          status: r.status,
-          konfirmasi_count: r.konfirmasi_count,
-          confirmationsCount: r.konfirmasi_count,
-          created_at: r.created_at,
-          expires_at: r.expires_at,
-          lat: repLat,
-          lng: repLng,
-          jarak_km: distanceKm,
-        };
-      });
-
-      // Filter berdasarkan radius jarak jika koordinat pengguna diberikan
-      if (userLat !== null && userLng !== null) {
-        reports = reports.filter((r) => r.jarak_km <= radiusKm);
+      } else {
+        // Query database berhasil tetapi tabel kosong (misal baru saja dihapus oleh pengguna)
+        reports = [];
       }
     } else {
-      // Fallback ke data demo saat tabel database masih kosong
+      // Fallback ke data demo hanya saat query database mengalami error (misal tabel belum dibuat atau env belum terhubung)
       reports = DEMO_COMMUNITY_REPORTS.map((rep) => ({
         ...rep,
         lat: maskCoordinate(rep.lat),

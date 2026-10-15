@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 import { getAdm4ByLocation } from "@/lib/bmkg";
 import { hitungSkorBanjir } from "@/lib/risiko";
-import { getEvacuationPointsForLocation } from "@/lib/evakuasi";
+import { getEvacuationPointsForLocation, getDefaultCoordinatesForLocation } from "@/lib/evakuasi";
 import { 
   DesktopSidebar, 
   NavTab 
@@ -45,18 +46,9 @@ import {
   mockCommunityReports 
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning } from "@/types";
-import { DownloadCloud, Layers, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/lib/context/AuthContext";
+import { DownloadCloud, Layers } from "lucide-react";
 
 export default function SiagaKitaApp() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-
-  // Client-side authentication guard: redirect to /login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      window.location.replace("/login");
-    }
-  }, [isLoading, isAuthenticated]);
   // Navigation & Viewport State
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [currentTab, setCurrentTab] = useState<NavTab>("beranda");
@@ -71,6 +63,7 @@ export default function SiagaKitaApp() {
   const [showRoute, setShowRoute] = useState<boolean>(false);
   const [mapLayerTab, setMapLayerTab] = useState<"evakuasi" | "rute" | "laporan">("evakuasi");
   const [communityReports, setCommunityReports] = useState<CommunityReport[]>(mockCommunityReports);
+  const [isRefreshingReports, setIsRefreshingReports] = useState<boolean>(false);
 
   // Dynamic evacuation points according to current location and user's GPS coords
   const currentEvacuationPoints = useMemo(() => {
@@ -111,6 +104,44 @@ export default function SiagaKitaApp() {
     }
   }, []);
 
+  // Fetch Community Reports dynamically from /api/laporan
+  const fetchReports = useCallback(async (lat?: number, lng?: number) => {
+    setIsRefreshingReports(true);
+    try {
+      let url = "/api/laporan";
+      if (lat !== undefined && lng !== undefined) {
+        url += `?lat=${lat}&lng=${lng}&radius_km=30`;
+      }
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (Array.isArray(json.reports)) {
+        const mappedReports: CommunityReport[] = json.reports.map((r: any) => ({
+          id: r.id,
+          userName: r.userName || r.user_name || "Warga Siaga",
+          category: (r.category || r.tipe || "Banjir") as any,
+          tipe: r.tipe || r.category || "Banjir",
+          title: r.title || r.tipe || "Laporan Lapangan",
+          description: r.description || r.deskripsi || "",
+          deskripsi: r.deskripsi || r.description || "",
+          locationName: r.locationName || currentLocation,
+          timeAgo: r.timeAgo || (r.created_at ? new Date(r.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "Baru saja"),
+          status: (r.status === "terverifikasi" ? "Terverifikasi" : "Dalam Verifikasi") as any,
+          confirmationsCount: r.confirmationsCount ?? r.konfirmasi_count ?? 0,
+          konfirmasi_count: r.confirmationsCount ?? r.konfirmasi_count ?? 0,
+          lat: r.lat,
+          lng: r.lng,
+          userConfirmed: false,
+        }));
+        setCommunityReports(mappedReports);
+      }
+    } catch (err) {
+      console.warn("Gagal mengambil data laporan dari /api/laporan:", err);
+    } finally {
+      setIsRefreshingReports(false);
+    }
+  }, [currentLocation]);
+
   const handleSelectLocation = (
     locationName: string, 
     adm4Code?: string, 
@@ -121,11 +152,13 @@ export default function SiagaKitaApp() {
     // Hanya aktifkan koordinat presisi jika tombol GPS ditekan
     setUserCoords(preciseCoords || null);
     fetchWeather(locationName, adm4Code);
+    fetchReports(preciseCoords?.lat, preciseCoords?.lng);
   };
 
   useEffect(() => {
     fetchWeather(currentLocation);
-  }, [currentLocation, fetchWeather]);
+    fetchReports(userCoords?.lat, userCoords?.lng);
+  }, [currentLocation, userCoords, fetchWeather, fetchReports]);
 
   // Dynamic risk calculation based on BMKG weather condition & location
   const currentRisk = useMemo(() => {
@@ -254,7 +287,7 @@ export default function SiagaKitaApp() {
     setMapLayerTab("rute");
   };
 
-  const handleConfirmReport = (reportId: string) => {
+  const handleConfirmReport = async (reportId: string) => {
     setCommunityReports((prev) =>
       prev.map((rep) =>
         rep.id === reportId
@@ -268,47 +301,64 @@ export default function SiagaKitaApp() {
           : rep
       )
     );
+
+    // Hanya panggil API jika ID adalah UUID asli dari database (bukan ID optimistic lokal)
+    const isRealUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reportId);
+    if (!isRealUUID) return;
+
+    try {
+      await fetch(`/api/laporan/${encodeURIComponent(reportId)}/konfirmasi`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vote: 1 }),
+      });
+    } catch (err) {
+      console.warn("Gagal mengirim konfirmasi laporan ke API:", err);
+    }
   };
 
-  const handleCreateReport = (newRep: Partial<CommunityReport>) => {
+  const handleCreateReport = async (newRep: Partial<CommunityReport> & { lat?: number; lng?: number }) => {
+    // Utamakan koordinat presisi dari GPS modal laporan, fallback ke userCoords atau default kota aktif
+    const cityDefault = getDefaultCoordinatesForLocation(newRep.locationName || currentLocation);
+    const reportLat = typeof newRep.lat === "number" ? newRep.lat : (userCoords?.lat ?? cityDefault.lat);
+    const reportLng = typeof newRep.lng === "number" ? newRep.lng : (userCoords?.lng ?? cityDefault.lng);
+
     const created: CommunityReport = {
       id: `rep-${Date.now()}`,
-      userName: newRep.userName || "Warga Siaga",
+      userName: newRep.userName || "Adam",
       category: newRep.category || "Banjir",
+      tipe: newRep.category || "Banjir",
       title: newRep.title || "Laporan Lapangan",
       description: newRep.description || "",
+      deskripsi: newRep.description || "",
       locationName: newRep.locationName || currentLocation,
       timeAgo: "Baru saja",
       status: "Dalam Verifikasi", // Crucial rule
       confirmationsCount: 1,
+      lat: reportLat,
+      lng: reportLng,
     };
-    setCommunityReports([created, ...communityReports]);
+    setCommunityReports((prev) => [created, ...prev]);
+
+    try {
+      const res = await fetch("/api/laporan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipe: newRep.category || newRep.title || "Banjir",
+          deskripsi: newRep.description || newRep.title || "Laporan kondisi lapangan oleh warga",
+          lat: reportLat,
+          lng: reportLng,
+          foto_urls: [],
+        }),
+      });
+      if (res.ok) {
+        fetchReports(userCoords?.lat, userCoords?.lng);
+      }
+    } catch (err) {
+      console.warn("Gagal mengirim laporan ke /api/laporan:", err);
+    }
   };
-
-  // Loading Screen while verifying session
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#F5F7F6] flex flex-col items-center justify-center p-4 select-none">
-        <div className="w-16 h-16 rounded-[20px] bg-[#176B4D] flex items-center justify-center text-white shadow-xl shadow-[#176B4D]/25 animate-bounce mb-5">
-          <ShieldCheck className="w-9 h-9 text-emerald-300" />
-        </div>
-        <div className="text-center">
-          <h1 className="text-2xl font-extrabold tracking-tight text-[#17211D]">
-            Siaga<span className="text-[#176B4D]">Kita</span>
-          </h1>
-          <p className="text-xs text-[#68756E] mt-2 flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#176B4D] animate-ping" />
-            <span>Memeriksa status sesi pengguna...</span>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated, prevent rendering dashboard while redirecting to /login
-  if (!isAuthenticated) {
-    return null;
-  }
 
   // If Fullscreen Emergency Warning is triggered
   if (showEmergencyFullscreen) {
@@ -373,11 +423,13 @@ export default function SiagaKitaApp() {
         isOpen={showCreateReportModal}
         onClose={() => setShowCreateReportModal(false)}
         onSubmit={handleCreateReport}
+        defaultLocationName={currentLocation}
       />
 
       <SayaAmanModal
         isOpen={showSayaAmanModal}
         onClose={() => setShowSayaAmanModal(false)}
+        userCoords={userCoords}
       />
 
       {/* VIEWPORT MODE: DESIGN SYSTEM / TOKENS */}
@@ -448,6 +500,8 @@ export default function SiagaKitaApp() {
                   reports={communityReports}
                   onOpenCreateModal={() => setShowCreateReportModal(true)}
                   onConfirmReport={handleConfirmReport}
+                  onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                  isRefreshing={isRefreshingReports}
                 />
               ) : mobileTab === "mitigasi" ? (
                 <MobileMitigationView />
@@ -519,7 +573,7 @@ export default function SiagaKitaApp() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h1 className="text-2xl font-bold tracking-tight text-[#17211D]">
-                        Halo, {user?.nama || "Warga Siaga"} 👋
+                        Halo, Adam 👋
                       </h1>
                       <p className="text-xs md:text-sm text-[#68756E] mt-1">
                         Pantau kondisi cuaca dan risiko bencana di wilayahmu agar selalu siap.
@@ -600,27 +654,41 @@ export default function SiagaKitaApp() {
                   </div>
 
                   {/* Interactive Map Filter Tabs */}
-                  <div className="flex items-center gap-2 border-b border-[#E6EBE8] pb-2">
-                    {[
-                      { id: "evakuasi", label: "Peta & Titik Evakuasi" },
-                      { id: "rute", label: "Rute Evakuasi" },
-                      { id: "laporan", label: "Laporan Warga" },
-                    ].map((tab) => (
+                  <div className="flex items-center justify-between border-b border-[#E6EBE8] pb-2">
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                      {[
+                        { id: "evakuasi", label: "Peta & Titik Evakuasi" },
+                        { id: "rute", label: "Rute Evakuasi" },
+                        { id: "laporan", label: "Laporan Warga" },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            setMapLayerTab(tab.id as any);
+                            setShowRoute(tab.id === "rute");
+                          }}
+                          className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
+                            mapLayerTab === tab.id
+                              ? "bg-[#176B4D] text-white shadow-sm"
+                              : "bg-white text-[#68756E] border border-[#E6EBE8] hover:bg-[#F8FAF9]"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {mapLayerTab === "laporan" && (
                       <button
-                        key={tab.id}
-                        onClick={() => {
-                          setMapLayerTab(tab.id as any);
-                          setShowRoute(tab.id === "rute");
-                        }}
-                        className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all ${
-                          mapLayerTab === tab.id
-                            ? "bg-[#176B4D] text-white shadow-sm"
-                            : "bg-white text-[#68756E] border border-[#E6EBE8] hover:bg-[#F8FAF9]"
-                        }`}
+                        onClick={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                        disabled={isRefreshingReports}
+                        className="px-3 py-1.5 rounded-[10px] text-xs font-bold bg-white hover:bg-[#F8FAF9] active:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60 shrink-0"
+                        title="Segarkan pin laporan warga di peta"
                       >
-                        {tab.label}
+                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingReports ? "animate-spin" : ""}`} />
+                        <span className="hidden sm:inline">{isRefreshingReports ? "Memuat..." : "Segarkan Laporan"}</span>
                       </button>
-                    ))}
+                    )}
                   </div>
 
                   {/* Map Grid Layout (75% Map + 25% Detail Panel) */}
@@ -685,6 +753,8 @@ export default function SiagaKitaApp() {
                       setMapLayerTab("laporan");
                     }}
                     onConfirmReport={handleConfirmReport}
+                    onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                    isRefreshing={isRefreshingReports}
                   />
                 </div>
               )}
@@ -770,6 +840,13 @@ export default function SiagaKitaApp() {
         isOpen={showCreateReportModal}
         onClose={() => setShowCreateReportModal(false)}
         onSubmit={handleCreateReport}
+        defaultLocationName={currentLocation}
+        initialCoords={userCoords}
+        onDetectGPS={(coords) => {
+          if (!userCoords) {
+            setUserCoords(coords);
+          }
+        }}
       />
 
       <OfflineMapModal
