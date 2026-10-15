@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { X, Camera, MapPin, AlertCircle, CheckCircle2, UploadCloud, Crosshair, Loader2, RefreshCw, Trash2, Image as ImageIcon } from "lucide-react";
+import { X, MapPin, AlertCircle, CheckCircle2, UploadCloud, Crosshair, Loader2, RefreshCw } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { compressAndConvertToWebP, formatFileSize } from "@/lib/image-compression";
 

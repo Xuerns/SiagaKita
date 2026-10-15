@@ -7,35 +7,39 @@ import {
   Cloud,
   CloudLightning,
   AlertTriangle, 
-  ArrowRight, 
   Compass, 
   CheckSquare, 
   UserCheck, 
   DownloadCloud,
   ChevronRight
 } from "lucide-react";
-import { WeatherCurrent, ActiveWarning, ForecastDay } from "@/types";
+import { WeatherCurrent, ActiveWarning, ForecastDay, EarthquakeData } from "@/types";
 import { MobileTab } from "../layout/MobileBottomNav";
 import { useAuth } from "@/lib/context/AuthContext";
+import { EarthquakeCard } from "@/components/dashboard/EarthquakeCard";
 
 interface MobileHomeViewProps {
   weather: WeatherCurrent;
   warning: ActiveWarning;
   forecast: ForecastDay[];
+  earthquake?: EarthquakeData | null;
   onNavigateTab: (tab: MobileTab) => void;
   onOpenWarningDetail: () => void;
   onOpenSayaAman: () => void;
   onOpenOfflineMap: () => void;
+  onViewOnMap?: (lat: number, lng: number) => void;
 }
 
 export function MobileHomeView({
   weather,
   warning,
   forecast,
+  earthquake,
   onNavigateTab,
   onOpenWarningDetail,
   onOpenSayaAman,
   onOpenOfflineMap,
+  onViewOnMap,
 }: MobileHomeViewProps) {
   const { user } = useAuth();
   const displayName = user?.nama ? user.nama.split(" ")[0] : "Kawan";
@@ -149,6 +153,14 @@ export function MobileHomeView({
         </div>
         <ChevronRight className="w-5 h-5 text-[#D64545] shrink-0" />
       </div>
+
+      {/* 3.5 Monitoring Gempa Bumi Terkini BMKG (Mobile) */}
+      {earthquake && (
+        <EarthquakeCard 
+          earthquake={earthquake} 
+          onViewOnMap={onViewOnMap} 
+        />
+      )}
 
       {/* 4. Quick Actions Grid */}
       <div className="grid grid-cols-3 gap-2 pt-1">

@@ -8,7 +8,7 @@ import { checkRateLimit } from '@/lib/security';
  * Sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP Pasal 8 & 43)
  * serta spesifikasi PRD Bagian 14.2.
  */
-export async function DELETE(request: NextRequest) {
+export async function DELETE(_request?: NextRequest) {
   try {
     const supabase = await createClient();
 

@@ -6,14 +6,14 @@ export interface AuthUser {
   id: string;
   email?: string | null;
   nama: string;
-  role: "warga" | "relawan" | "admin";
+  role: "warga";
   is_anonymous?: boolean;
 }
 
 export interface UserProfile {
   id: string;
   nama: string;
-  role: "warga" | "relawan" | "admin";
+  role: "warga";
   no_telepon?: string | null;
   alamat?: string | null;
   region_id?: string | null;

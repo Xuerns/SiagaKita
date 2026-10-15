@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Layers, Crosshair, MapPin, Navigation, Compass, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Layers, Crosshair, MapPin, Navigation } from "lucide-react";
 import { EvacuationPoint } from "@/types";
 
 interface MobileRuteViewProps {

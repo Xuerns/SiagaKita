@@ -7,14 +7,8 @@ import {
   Minus, 
   Crosshair, 
   Layers, 
-  ShieldCheck, 
   AlertTriangle,
-  Loader2,
-  Navigation,
-  Compass,
-  CheckCircle2,
-  Move,
-  X
+  Loader2
 } from "lucide-react";
 import { EvacuationPoint, CommunityReport } from "@/types";
 import { getCityCoordinates } from "@/lib/evakuasi";
@@ -31,9 +25,9 @@ interface InteractiveRiskMapProps {
   locationName?: string;
   riskLevel?: string;
   userCoords?: { lat: number; lng: number; accuracy?: number } | null;
+  earthquakeCoords?: { lat: number; lng: number; magnitude: number; wilayah: string } | null;
   onUpdateCoords?: (coords: { lat: number; lng: number; accuracy?: number } | null) => void;
   onSelectCity?: (locationName: string, adm4Code?: string, coords?: { lat: number; lng: number; accuracy?: number }) => void;
-  onLocateGPS?: () => void;
 }
 
 export function InteractiveRiskMap({
@@ -47,9 +41,9 @@ export function InteractiveRiskMap({
   locationName = "Kota Bandung",
   riskLevel = "aman",
   userCoords,
+  earthquakeCoords,
   onUpdateCoords,
   onSelectCity,
-  onLocateGPS,
 }: InteractiveRiskMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -200,7 +194,6 @@ export function InteractiveRiskMap({
   useEffect(() => {
     if (!mapRef.current || !mapLoaded) return;
     
-    const locationChanged = prevLocationRef.current !== locationName;
     prevLocationRef.current = locationName;
 
     const coords = getCityCoordinates(locationName);
@@ -504,8 +497,50 @@ export function InteractiveRiskMap({
           });
         }
       }
-    });
-  }, [evacuationPoints, communityReports, selectedPointId, locationName, userCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords, activeLayer]);
+
+      // Render Earthquake Epicenter marker if earthquakeCoords are provided
+      if (earthquakeCoords && typeof earthquakeCoords.lat === "number" && typeof earthquakeCoords.lng === "number" && mapRef.current) {
+          const eqMarkerEl = document.createElement("div");
+          eqMarkerEl.className = "cursor-pointer group flex flex-col items-center";
+          eqMarkerEl.innerHTML = `
+            <div class="relative flex items-center justify-center">
+              <span class="absolute w-8 h-8 rounded-full bg-rose-500/30 animate-ping"></span>
+              <span class="absolute w-6 h-6 rounded-full bg-rose-500/50 animate-pulse"></span>
+              <div class="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white">
+                M
+              </div>
+            </div>
+            <div class="text-[9px] font-bold text-rose-700 bg-white/95 px-1.5 py-0.5 rounded shadow-sm border border-rose-200 mt-1 whitespace-nowrap">
+              M ${earthquakeCoords.magnitude.toFixed(1)}
+            </div>
+          `;
+
+          const eqPopup = new maplibregl.Popup({ offset: 15 }).setHTML(`
+            <div class="p-2 text-xs">
+              <div class="font-bold text-rose-600 flex items-center gap-1">
+                <span>⚠️ Episentrum Gempa BMKG</span>
+              </div>
+              <div class="font-extrabold text-sm text-gray-900 mt-0.5">
+                M ${earthquakeCoords.magnitude.toFixed(1)}
+              </div>
+              <div class="text-gray-600 text-[11px] mt-1">
+                ${earthquakeCoords.wilayah}
+              </div>
+            </div>
+          `);
+
+          const eqMarker = new maplibregl.Marker({
+            element: eqMarkerEl,
+            anchor: "center",
+          })
+            .setLngLat([earthquakeCoords.lng, earthquakeCoords.lat])
+            .setPopup(eqPopup)
+            .addTo(mapRef.current);
+
+          markersRef.current.push(eqMarker);
+        }
+      });
+  }, [evacuationPoints, communityReports, selectedPointId, locationName, userCoords, earthquakeCoords, isUserInCurrentCity, mapLoaded, onSelectPoint, onUpdateCoords, activeLayer]);
 
   // 6. Smoothly pan/center map ONLY when an evacuation point is explicitly clicked/selected by user
   const prevFocusTimestampRef = useRef<number>(focusTimestamp || 0);
@@ -694,6 +729,15 @@ export function InteractiveRiskMap({
             <div className="flex items-center gap-1.5 pt-0.5">
               <span className="w-3.5 h-1 rounded bg-[#2563EB]" />
               <span className="font-semibold text-[#2563EB]">Rute Jalan Raya (OSRM)</span>
+            </div>
+          )}
+
+          {earthquakeCoords && (
+            <div className="flex items-center gap-1.5 pt-0.5 border-t border-[#F1F4F2]">
+              <span className="w-3 h-3 rounded-full bg-rose-600 ring-2 ring-rose-200 animate-pulse" />
+              <span className="font-semibold text-rose-700 text-[10px]">
+                Episentrum M {earthquakeCoords.magnitude.toFixed(1)}
+              </span>
             </div>
           )}
 

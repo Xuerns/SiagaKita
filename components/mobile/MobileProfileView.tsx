@@ -1,13 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { 
-  User, 
   MapPin, 
   PhoneCall, 
   Bell, 
   HardDrive, 
-  Shield, 
   Lock, 
-  Check, 
   LogOut,
   LogIn,
   ChevronRight,
@@ -16,6 +13,7 @@ import {
   Loader2
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
+import { getUserInitials, getUserRoleLabel } from "@/lib/utils";
 
 interface MobileProfileViewProps {
   currentLocation: string;
@@ -31,19 +29,8 @@ export function MobileProfileView({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const initials = useMemo(() => {
-    if (!user?.nama) return "TM";
-    const words = user.nama.trim().split(/\s+/);
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }, [user?.nama]);
-
-  const roleLabel = useMemo(() => {
-    if (isGuest || user?.is_anonymous) return "Mode Tamu";
-    if (user?.role === "relawan") return "Relawan Siaga";
-    if (user?.role === "admin") return "Admin Wilayah";
-    return "Pengguna Warga";
-  }, [user, isGuest]);
+  const initials = getUserInitials(user?.nama, "TM");
+  const roleLabel = getUserRoleLabel(user, isGuest);
 
   return (
     <div className="p-4 space-y-4 pb-20 select-none">

@@ -1,4 +1,4 @@
-import { WeatherCurrent, ForecastDay, ActiveWarning, EvacuationPoint, CommunityReport, ChecklistItem } from "@/types";
+import { WeatherCurrent, ForecastDay, ActiveWarning, CommunityReport, ChecklistItem } from "@/types";
 
 // Data cuaca awal / fallback default (kondisi normal, data dinamis akan dimuat dari API BMKG asli)
 export const mockCurrentWeather: WeatherCurrent = {
@@ -91,64 +91,10 @@ export const mockEmergencyFullWarning: ActiveWarning = {
     "Segera menuju titik evakuasi terdekat dan hindari perjalanan di area rawan.",
     "Matikan aliran listrik dan gas di dalam rumah sebelum meninggalkan tempat.",
     "Bawa tas siaga yang sudah dipersiapkan.",
-    "Ikuti arahan petugas BPBD dan relawan di posko lapangan.",
+    "Ikuti arahan petugas BPBD dan aparat setempat di posko lapangan.",
   ],
   isDemoSimulation: true,
 };
-
-export const mockEvacuationPoints: EvacuationPoint[] = [
-  {
-    id: "evac-1",
-    name: "SMPN 5 Bogor",
-    type: "Sekolah",
-    address: "Jl. Dadali No. 35, Tanah Sareal, Kota Bogor",
-    distanceKm: 1.2,
-    travelMinutes: 5,
-    capacity: 450,
-    verified: true,
-    contact: "0251-8321456",
-    lat: -6.582,
-    lng: 106.793,
-  },
-  {
-    id: "evac-2",
-    name: "GOR Pajajaran",
-    type: "GOR",
-    address: "Jl. Pemuda No. 4, Tanah Sareal, Kota Bogor",
-    distanceKm: 1.8,
-    travelMinutes: 7,
-    capacity: 1200,
-    verified: true,
-    contact: "0251-8317890",
-    lat: -6.574,
-    lng: 106.798,
-  },
-  {
-    id: "evac-3",
-    name: "Masjid Al-Ikhlas",
-    type: "Masjid",
-    address: "Jl. Batutulis No. 12, Bogor Selatan",
-    distanceKm: 2.4,
-    travelMinutes: 10,
-    capacity: 300,
-    verified: true,
-    lat: -6.615,
-    lng: 106.809,
-  },
-  {
-    id: "evac-4",
-    name: "RSUD Kota Bogor",
-    type: "Rumah Sakit",
-    address: "Jl. Dr. Sumeru No. 120, Bogor Barat",
-    distanceKm: 3.1,
-    travelMinutes: 12,
-    capacity: 200,
-    verified: true,
-    contact: "0251-8312292",
-    lat: -6.589,
-    lng: 106.775,
-  },
-];
 
 export const mockCommunityReports: CommunityReport[] = [
   {

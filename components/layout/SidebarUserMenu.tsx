@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronsUpDown, LogOut, Settings, ShieldAlert, UserCheck } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ChevronsUpDown, LogOut, Settings, UserCheck } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { cn } from "@/lib/utils";
+import { cn, getUserInitials, getUserRoleLabel } from "@/lib/utils";
 
 interface SidebarUserMenuProps {
   onOpenSettings: () => void;
@@ -33,21 +33,10 @@ export function SidebarUserMenu({ onOpenSettings }: SidebarUserMenuProps) {
     };
   }, [open]);
 
-  const initials = useMemo(() => {
-    if (!user?.nama) return "WG";
-    const words = user.nama.trim().split(/\s+/);
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }, [user?.nama]);
+  const initials = getUserInitials(user?.nama, "WG");
+  const roleLabel = getUserRoleLabel(user, isGuest);
 
-  const roleLabel = useMemo(() => {
-    if (isGuest || user?.is_anonymous) return "Mode Tamu";
-    if (user?.role === "relawan") return "Relawan Siaga";
-    if (user?.role === "admin") return "Admin Wilayah";
-    return "Pengguna Warga";
-  }, [user, isGuest]);
-
-  const RoleIcon = user?.role === "relawan" ? ShieldAlert : UserCheck;
+  const RoleIcon = UserCheck;
   const name = user?.nama || "Pengguna Siaga";
 
   return (

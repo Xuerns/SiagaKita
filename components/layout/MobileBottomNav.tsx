@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Map, FileText, ShieldAlert, User, AlertTriangle } from "lucide-react";
+import { Home, Map, FileText, ShieldAlert, User } from "lucide-react";
 
 export type MobileTab = "beranda" | "peta" | "laporan" | "mitigasi" | "profil";
 

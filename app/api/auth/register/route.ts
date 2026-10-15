@@ -73,9 +73,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-insert atau perbarui profil pengguna di tabel profiles
+    // Auto-confirm email dan upsert profil di tabel profiles
     try {
       const adminClient = createAdminClient();
+      if (typeof adminClient?.auth?.admin?.updateUserById === 'function') {
+        await adminClient.auth.admin.updateUserById(data.user.id, { email_confirm: true });
+      }
       await adminClient.from('profiles').upsert(
         {
           id: data.user.id,
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
         { onConflict: 'id' }
       );
     } catch (profileErr) {
-      console.warn('Gagal upsert profile via admin client (mungkin trigger database sudah menangani):', profileErr);
+      console.warn('Gagal upsert profile/confirm via admin client:', profileErr);
     }
 
     return NextResponse.json({

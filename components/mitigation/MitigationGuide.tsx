@@ -5,10 +5,8 @@ import {
   Activity, 
   Wind, 
   Flame, 
-  CheckCircle2, 
   DownloadCloud, 
-  FileCheck,
-  Info 
+  FileCheck 
 } from "lucide-react";
 import { mockMitigationGuides } from "@/data/mockDisasterData";
 import { TasSiagaChecklist } from "./TasSiagaChecklist";

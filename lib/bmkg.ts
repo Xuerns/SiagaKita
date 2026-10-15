@@ -1,5 +1,5 @@
 import { WeatherCurrent, ForecastDay } from "@/types";
-import { mockCurrentWeather, mockForecast5Days, getDynamicForecast5Days } from "@/data/mockDisasterData";
+import { mockCurrentWeather, getDynamicForecast5Days } from "@/data/mockDisasterData";
 
 export interface BMKGRegionInfo {
   name: string;

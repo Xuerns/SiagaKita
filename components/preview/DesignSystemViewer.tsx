@@ -3,11 +3,7 @@ import {
   Palette, 
   Type, 
   Layers, 
-  ShieldCheck, 
-  Cpu, 
-  CheckCircle2, 
-  AlertTriangle,
-  Info
+  Cpu
 } from "lucide-react";
 import { RiskBadge, SourceBadge, VerificationBadge } from "../ui/Badge";
 

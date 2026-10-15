@@ -10,8 +10,7 @@ import {
   CheckCircle2, 
   ShieldCheck,
   Wind,
-  Thermometer,
-  Clock 
+  Thermometer
 } from "lucide-react";
 import { EvacuationPoint } from "@/types";
 

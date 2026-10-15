@@ -1,36 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { CheckSquare, Check, Save, HardDrive, RefreshCw } from "lucide-react";
+import { CheckSquare, Check, Save, HardDrive } from "lucide-react";
 import { ChecklistItem } from "@/types";
 import { initialChecklistItems } from "@/data/mockDisasterData";
+import { 
+  migrateChecklistFromLocalStorage, 
+  saveOfflineChecklist 
+} from "@/lib/offline/db";
 
 export function TasSiagaChecklist() {
   const [items, setItems] = useState<ChecklistItem[]>(initialChecklistItems);
   const [savedNotification, setSavedNotification] = useState(false);
 
-  // Load from localStorage if present
+  // Load from IndexedDB (with legacy localStorage migration)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("siagakita_checklist");
-      if (saved) {
-        setItems(JSON.parse(saved));
+    let mounted = true;
+    migrateChecklistFromLocalStorage(initialChecklistItems).then((loaded) => {
+      if (mounted && loaded) {
+        setItems(loaded);
       }
-    } catch (e) {
-      // LocalStorage not available or blocked
-    }
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const toggleItem = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
+    setItems((prev) => {
+      const updated = prev.map((item) =>
         item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
+      );
+      // Auto-save perubahan ke IndexedDB di latar belakang
+      saveOfflineChecklist(updated);
+      return updated;
+    });
   };
 
-  const handleSave = () => {
-    try {
-      localStorage.setItem("siagakita_checklist", JSON.stringify(items));
-    } catch (e) {}
+  const handleSave = async () => {
+    await saveOfflineChecklist(items);
     setSavedNotification(true);
     setTimeout(() => setSavedNotification(false), 2500);
   };

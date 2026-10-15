@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { confirmReportSchema } from '@/lib/validations';
 import { checkRateLimit } from '@/lib/security';
 
 export async function POST(
