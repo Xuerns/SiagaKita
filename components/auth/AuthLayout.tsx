@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { 
-  ShieldCheck, 
   ArrowLeft, 
   Bell, 
   MapPin, 
@@ -39,7 +38,18 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
           <div className="relative z-10">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <div className="w-10 h-10 rounded-[12px] bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-emerald-300 shadow-sm group-hover:bg-white/20 transition-all">
-                <ShieldCheck className="w-6 h-6 text-[#5AC48A]" />
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-6 h-6 text-[#5AC48A]"
+                >
+                  <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
+                  <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
+                </svg>
               </div>
               <div>
                 <div className="text-xl font-bold tracking-tight text-white leading-none">
@@ -145,7 +155,18 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
             {/* Mobile Brand indicator */}
             <div className="flex lg:hidden items-center gap-2">
               <div className="w-7 h-7 rounded-[8px] bg-[#176B4D] flex items-center justify-center text-white">
-                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 text-emerald-300"
+                >
+                  <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
+                  <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
+                </svg>
               </div>
               <span className="text-sm font-bold text-[#17211D]">
                 Siaga<span className="text-[#176B4D]">Kita</span>

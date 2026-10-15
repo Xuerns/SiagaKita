@@ -7,7 +7,6 @@ import {
   ShieldAlert, 
   Users, 
   Settings,
-  ShieldCheck,
   TreePine,
   Home as HouseIcon
 } from "lucide-react";
@@ -39,7 +38,19 @@ export function DesktopSidebar({ currentTab, onSelectTab, warningCount = 1 }: De
           className="flex items-center gap-2.5 mb-8 cursor-pointer group"
         >
           <div className="w-9 h-9 rounded-[10px] bg-[#176B4D] flex items-center justify-center text-white shadow-sm group-hover:bg-[#104A35] transition-colors">
-            <ShieldCheck className="w-5 h-5 text-emerald-300" />
+            {/* Logo Bencana Alam: Simbol Gunung (Geologi/Gempa/Longsor) & Gelombang Air (Banjir/Tsunami) */}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 text-emerald-300"
+            >
+              <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
+              <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
+            </svg>
           </div>
           <div>
             <div className="text-[17px] font-bold tracking-tight text-[#17211D] leading-none flex items-center gap-0.5">
