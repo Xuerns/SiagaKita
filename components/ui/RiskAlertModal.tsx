@@ -48,10 +48,19 @@ export function RiskAlertModal({ warning, onClose }: RiskAlertModalProps) {
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 border border-white/30">
             <AlertTriangle className="w-4 h-4 text-white" />
           </div>
-          <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white px-2 py-0.5 rounded-full">
-            Peringatan Risiko Tinggi
+          <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/20 text-white px-2.5 py-0.5 rounded-full border border-white/20">
+            {warning.isDemoSimulation
+              ? "SIMULASI • RISIKO TINGGI"
+              : `PERINGATAN ${warning.level?.toUpperCase() || "RISIKO TINGGI"}`}
           </span>
         </div>
+
+        {/* Jenis Kejadian Bencana */}
+        {warning.hazardType && (
+          <div className="text-[11px] font-semibold text-amber-200 uppercase tracking-wide mb-1">
+            {warning.hazardType}
+          </div>
+        )}
 
         {/* Tulisan Peringatan / Terjadi Apa */}
         <h3 className="text-base font-bold leading-snug text-white mb-2">
@@ -65,9 +74,9 @@ export function RiskAlertModal({ warning, onClose }: RiskAlertModalProps) {
 
         {/* Lokasi Terkait */}
         {warning.affectedArea && (
-          <div className="flex items-center gap-1.5 text-[11px] text-white/80 pt-2 border-t border-white/15">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-white/90" />
-            <span className="truncate">{warning.affectedArea}</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-white/90 pt-2 border-t border-white/15">
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-white" />
+            <span className="truncate font-medium">{warning.affectedArea}</span>
           </div>
         )}
       </div>

@@ -31,7 +31,7 @@ import { MobileRuteView } from "@/components/mobile/MobileRuteView";
 import { MobileCommunityView } from "@/components/mobile/MobileCommunityView";
 import { MobileMitigationView } from "@/components/mobile/MobileMitigationView";
 import { MobileProfileView } from "@/components/mobile/MobileProfileView";
-import { DeviceViewportSwitcher, ViewportMode } from "@/components/preview/DeviceViewportSwitcher";
+import { type ViewportMode } from "@/components/preview/DeviceViewportSwitcher";
 import { DesignSystemViewer } from "@/components/preview/DesignSystemViewer";
 import { SayaAmanModal } from "@/components/ui/SayaAmanModal";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
@@ -552,17 +552,7 @@ export default function SiagaKitaApp() {
 
   return (
     <div className="min-h-screen bg-[#F5F7F6] text-[#17211D]">
-      {/* Floating Device Viewport & Simulation Bar */}
-      <DeviceViewportSwitcher
-        currentMode={viewportMode}
-        onChangeMode={(mode) => {
-          setViewportMode(mode);
-          if (mode === "tokens") setCurrentTab("tokens");
-        }}
-        onTriggerEmergency={() => setShowEmergencyFullscreen(true)}
-        onSimulatePushNotification={() => setShowPushNotification(true)}
-        onTriggerRiskAlert={() => setShowRiskAlertModal(true)}
-      />
+
 
 
       {/* VIEWPORT MODE: DESIGN SYSTEM / TOKENS */}
@@ -691,23 +681,14 @@ export default function SiagaKitaApp() {
             <DesktopSidebar
               currentTab={currentTab}
               onSelectTab={(tab) => {
-                if (tab === "peringatan") {
-                  const level = currentRisk.level;
-                  if ((level === "siaga" || level === "awas") && !warningDismissed) {
-                    setModalAlertWarning(null);
-                    setShowRiskAlertModal(true);
-                  } else if (level === "waspada" && !warningDismissed) {
-                    setShowPushNotification(true);
-                  } else {
-                    setShowEmergencyFullscreen(true);
-                  }
-                } else if (tab === "tokens") {
+                if (tab === "tokens") {
                   setViewportMode("tokens");
                 } else {
                   setCurrentTab(tab);
                 }
               }}
-              warningCount={1}
+              warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
+              onTestRiskAlert={handleTriggerTestRiskAlert}
             />
 
             {/* Desktop Main Content Container */}
@@ -1233,8 +1214,25 @@ export default function SiagaKitaApp() {
       {/* Risk Alert Modal — card kecil/sedang untuk risiko tinggi (siaga/awas), singkat padat jelas */}
       {showRiskAlertModal && !warningDismissed && (
         <RiskAlertModal
-          warning={dynamicWarning}
-          onClose={() => setShowRiskAlertModal(false)}
+          warning={modalAlertWarning || dynamicWarning}
+          onClose={() => {
+            setShowRiskAlertModal(false);
+            setModalAlertWarning(null);
+          }}
+          onConfirmSayaAman={handleSayaAmanConfirmed}
+          onNavigateToEvacuationRoute={() => {
+            setShowRiskAlertModal(false);
+            setModalAlertWarning(null);
+            setCurrentTab("peta");
+            setMobileTab("peta");
+            handleStartRouteNavigation();
+          }}
+          onOpenMitigationGuide={() => {
+            setShowRiskAlertModal(false);
+            setModalAlertWarning(null);
+            setCurrentTab("mitigasi");
+            setMobileTab("mitigasi");
+          }}
         />
       )}
     </div>
