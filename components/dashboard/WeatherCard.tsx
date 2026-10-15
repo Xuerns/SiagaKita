@@ -62,53 +62,53 @@ export function WeatherCard({ weather, isLoading, onRefresh, onOpenLocationModal
         </div>
       )}
 
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         {/* Left Side: Current Weather */}
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <div className={`w-8 h-8 rounded-full ${iconInfo.bgColor} ${iconInfo.textColor} flex items-center justify-center transition-colors`}>
+            <div className={`w-8 h-8 rounded-full ${iconInfo.bgColor} ${iconInfo.textColor} flex items-center justify-center transition-colors shrink-0`}>
               {iconInfo.icon}
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-medium text-[#68756E] block leading-none">
                   Cuaca Saat Ini
                 </span>
-                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-[#E8F5E9] text-[#176B4D] border border-[#C8E6C9]">
+                <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold rounded-full bg-[#E8F5E9] text-[#176B4D] border border-[#C8E6C9] shrink-0">
                   {weather.source}
                 </span>
               </div>
-              <span className="text-sm font-semibold text-[#17211D]">
+              <span className="text-sm font-semibold text-[#17211D] truncate block">
                 {weather.condition}
               </span>
             </div>
           </div>
 
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-[#17211D]">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-3xl font-bold tracking-tight text-[#17211D] shrink-0">
               {weather.temp}°C
             </span>
             {onOpenLocationModal ? (
               <button
                 onClick={onOpenLocationModal}
-                className="text-xs text-[#176B4D] flex items-center gap-1 group bg-[#F8FAF9] hover:bg-[#E5F5EA] px-2 py-0.5 rounded-full border border-[#E6EBE8] transition-colors cursor-pointer"
+                className="text-xs text-[#176B4D] inline-flex items-center gap-1 group bg-[#F8FAF9] hover:bg-[#E5F5EA] px-2 py-0.5 rounded-full border border-[#E6EBE8] transition-colors cursor-pointer max-w-full min-w-0"
                 title="Klik untuk ubah lokasi atau deteksi GPS"
               >
                 <MapPin className="w-3 h-3 text-[#176B4D] shrink-0" />
-                <span className="truncate max-w-[120px] font-medium">{weather.location}</span>
-                <span className="text-[10px] text-[#68756E] group-hover:text-[#176B4D]">▾</span>
+                <span className="truncate max-w-[110px] sm:max-w-[130px] font-medium">{weather.location}</span>
+                <span className="text-[10px] text-[#68756E] group-hover:text-[#176B4D] shrink-0">▾</span>
               </button>
             ) : (
-              <span className="text-xs text-[#68756E] flex items-center gap-0.5 truncate max-w-[140px]" title={weather.location}>
+              <span className="text-xs text-[#68756E] inline-flex items-center gap-1 truncate max-w-full" title={weather.location}>
                 <MapPin className="w-3 h-3 text-[#176B4D] shrink-0" />
-                <span className="truncate">{weather.location}</span>
+                <span className="truncate font-medium">{weather.location}</span>
               </span>
             )}
           </div>
         </div>
 
         {/* Right Side: Today's Window */}
-        <div className="bg-[#F8FAF9] border border-[#E6EBE8] rounded-[12px] p-2.5 text-right min-w-[110px]">
+        <div className="bg-[#F8FAF9] border border-[#E6EBE8] rounded-[12px] p-2.5 text-right min-w-[105px] shrink-0">
           <span className="text-[10px] text-[#929D96] font-medium block">Prakiraan Hari Ini</span>
           <div className="text-xs font-semibold text-[#17211D] mt-0.5 flex items-center justify-end gap-1">
             <span className={todayIconInfo.textColor}>{todayIconInfo.icon}</span>

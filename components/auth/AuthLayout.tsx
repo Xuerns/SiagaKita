@@ -26,7 +26,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
     <div className="min-h-screen bg-[#F5F7F6] text-[#17211D] flex flex-col justify-center items-center p-3 sm:p-6 lg:p-10 font-sans selection:bg-[#E5F5EA] selection:text-[#176B4D]">
       {/* Container Frame */}
       <div className="w-full max-w-5xl bg-white rounded-[24px] sm:rounded-[32px] border border-[#E6EBE8] shadow-[0_4px_25px_rgba(0,0,0,0.04)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[660px]">
-        
+
         {/* Left Visual Column (Showcase / Brand Hero) - Visible on lg screens */}
         <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-[#0F3822] via-[#176B4D] to-[#25845F] p-8 sm:p-10 text-white flex-col justify-between relative overflow-hidden select-none">
           {/* Subtle decorative background watermarks & circles */}
@@ -191,22 +191,20 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                 <button
                   type="button"
                   onClick={() => setMode("login")}
-                  className={`flex-1 py-2 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${
-                    mode === "login"
+                  className={`flex-1 py-2 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${mode === "login"
                       ? "bg-white text-[#176B4D] shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-[#E6EBE8]"
                       : "text-[#68756E] hover:text-[#17211D]"
-                  }`}
+                    }`}
                 >
                   Masuk ke Akun
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("register")}
-                  className={`flex-1 py-2 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${
-                    mode === "register"
+                  className={`flex-1 py-2 rounded-[9px] text-xs font-bold transition-all cursor-pointer ${mode === "register"
                       ? "bg-white text-[#176B4D] shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-[#E6EBE8]"
                       : "text-[#68756E] hover:text-[#17211D]"
-                  }`}
+                    }`}
                 >
                   Daftar Akun Baru
                 </button>
@@ -214,11 +212,13 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
             </div>
 
             {/* Active Form */}
-            {mode === "login" ? (
-              <LoginForm onSwitchToRegister={() => setMode("register")} />
-            ) : (
-              <RegisterForm onSwitchToLogin={() => setMode("login")} />
-            )}
+            <React.Suspense fallback={<div className="py-12 text-center text-xs text-[#68756E]">Memuat formulir...</div>}>
+              {mode === "login" ? (
+                <LoginForm onSwitchToRegister={() => setMode("register")} />
+              ) : (
+                <RegisterForm onSwitchToLogin={() => setMode("login")} />
+              )}
+            </React.Suspense>
           </div>
 
           {/* Footer note */}

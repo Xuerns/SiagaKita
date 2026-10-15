@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   User, 
   Mail, 
@@ -18,6 +18,7 @@ import {
   UserX,
   Check
 } from "lucide-react";
+import { INDONESIA_REGIONS } from "@/lib/bmkg";
 
 interface RegisterFormProps {
   onSwitchToLogin?: () => void;
@@ -25,12 +26,15 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"warga" | "relawan">("warga");
-  const [location, setLocation] = useState("Kota Bogor");
+  const [location, setLocation] = useState("Kota Bandung");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -38,14 +42,9 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const locations = [
-    "Kota Bogor",
-    "Kab. Bogor",
-    "Kota Depok",
-    "Kab. Sukabumi",
-    "DKI Jakarta",
-    "Kota Bekasi"
-  ];
+  const locations = useMemo(() => {
+    return INDONESIA_REGIONS.map((r) => r.name);
+  }, []);
 
   // Calculate password strength
   const calculateStrength = (pass: string) => {
@@ -88,34 +87,90 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
     setIsLoading(true);
 
-    // Simulate registration flow
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMsg("Pendaftaran berhasil! Akun Anda telah siap.");
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          nama: name,
+          role,
+          location,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Pendaftaran gagal. Silakan periksa kembali data Anda.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMsg("Pendaftaran berhasil! Mengarahkan ke dashboard...");
       setTimeout(() => {
-        router.push("/");
-      }, 1200);
-    }, 1500);
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat proses pendaftaran.");
+      setIsLoading(false);
+    }
   };
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal masuk sebagai tamu.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMsg("Masuk sebagai Tamu berhasil! Mengarahkan...");
+      setTimeout(() => {
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat masuk sebagai tamu.");
       setIsLoading(false);
-      router.push("/?mode=guest");
-    }, 600);
+    }
   };
 
-  const handleGoogleSignup = () => {
+  const handleGoogleSignup = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMsg("");
+    setSuccessMsg("Menghubungkan akun Google...");
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectParam)}`,
+        },
+      });
+
+      if (error) {
+        setErrorMsg(error.message);
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMsg("Gagal menginisialisasi pendaftaran Google.");
       setIsLoading(false);
-      setSuccessMsg("Menghubungkan akun Google...");
-      setTimeout(() => {
-        router.push("/");
-      }, 900);
-    }, 800);
+    }
   };
+
 
   return (
     <div className="w-full">

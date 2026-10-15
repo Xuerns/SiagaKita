@@ -30,6 +30,7 @@ interface MapDetailsPanelProps {
   onStartRouteNavigation: () => void;
   onOpenOfflineDownload: () => void;
   isMapOfflineDownloaded: boolean;
+  isGpsActive?: boolean;
 }
 
 export function MapDetailsPanel({
@@ -47,6 +48,7 @@ export function MapDetailsPanel({
   onStartRouteNavigation,
   onOpenOfflineDownload,
   isMapOfflineDownloaded,
+  isGpsActive = false,
 }: MapDetailsPanelProps) {
   const currentSelected = evacuationPoints.find((p) => p.id === selectedPointId) || evacuationPoints[0];
   const normRisk = (riskLevel || "aman").toLowerCase();
@@ -181,17 +183,30 @@ export function MapDetailsPanel({
           </div>
         </div>
 
-        {/* Titik Evakuasi Terdekat List */}
+        {/* Titik Evakuasi List */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-bold text-[#17211D]">Titik Evakuasi Terdekat ({selectedArea})</h4>
-            <span className="text-[10px] text-[#929D96]">Terverifikasi BPBD</span>
+            <h4 className="text-xs font-bold text-[#17211D]">
+              {typeof evacuationPoints[0]?.distanceKm === "number"
+                ? `Titik Evakuasi Terdekat (${selectedArea})`
+                : `Titik Evakuasi (${selectedArea})`}
+            </h4>
+            <span className="text-[10px] font-semibold text-[#176B4D]">
+              {isGpsActive && typeof evacuationPoints[0]?.distanceKm === "number"
+                ? "🎯 Dari GPS Anda"
+                : "Terverifikasi BPBD"}
+            </span>
           </div>
 
           <div className="space-y-2">
             {evacuationPoints.slice(0, 4).map((pt) => {
               const isSelected = pt.id === (selectedPointId || evacuationPoints[0]?.id);
-              const distText = (pt as any).distance || `${pt.distanceKm ?? 1.5} km`;
+              const hasDistance = typeof pt.distanceKm === "number";
+              const distBadge = hasDistance
+                ? pt.distanceKm! < 1
+                  ? `${Math.round(pt.distanceKm! * 1000)} m`
+                  : `${pt.distanceKm} km`
+                : null;
 
               return (
                 <div
@@ -219,7 +234,9 @@ export function MapDetailsPanel({
                       </span>
                       <span className="text-[10px] text-[#68756E] block flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-[#176B4D] shrink-0" />
-                        <span className="truncate">{distText} • Kapasitas: {pt.capacity || 500} orang</span>
+                        <span className="truncate">
+                          {distBadge ? `${distBadge} • ` : ""}Kapasitas: {pt.capacity || 500} orang
+                        </span>
                       </span>
                     </div>
                   </div>
@@ -240,7 +257,11 @@ export function MapDetailsPanel({
           onClick={onStartRouteNavigation}
           className="w-full py-2.5 rounded-[12px] bg-[#176B4D] hover:bg-[#12583e] active:scale-[0.99] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
         >
-          <span>Lihat Rute Evakuasi ({currentSelected?.name || "Terdekat"})</span>
+          <span>
+            {typeof currentSelected?.distanceKm === "number"
+              ? `Lihat Rute Evakuasi (${currentSelected?.name || "Terdekat"})`
+              : `Peta & Evakuasi (${currentSelected?.name || "Terpilih"})`}
+          </span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
 

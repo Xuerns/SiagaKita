@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { WeatherCurrent, ActiveWarning, ForecastDay } from "@/types";
 import { MobileTab } from "../layout/MobileBottomNav";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface MobileHomeViewProps {
   weather: WeatherCurrent;
@@ -36,15 +37,21 @@ export function MobileHomeView({
   onOpenSayaAman,
   onOpenOfflineMap,
 }: MobileHomeViewProps) {
+  const { user } = useAuth();
+  const displayName = user?.nama ? user.nama.split(" ")[0] : "Kawan";
+
   return (
     <div className="p-4 space-y-4 pb-20 select-none">
       {/* Greeting Header */}
       <div>
-        <h2 className="text-lg font-extrabold text-[#17211D]">Halo, Adam 👋</h2>
+        <h2 className="text-lg font-extrabold text-[#17211D]">
+          Halo, {displayName} 👋
+        </h2>
         <p className="text-xs text-[#68756E]">
           Tetap waspada dan jaga keselamatan di sekitarmu.
         </p>
       </div>
+
 
       {/* 1. Status Wilayah Card */}
       <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-sm flex items-center justify-between">

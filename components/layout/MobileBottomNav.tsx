@@ -1,7 +1,7 @@
 import React from "react";
-import { Home, Map, Users, ShieldAlert, User, AlertTriangle } from "lucide-react";
+import { Home, Map, FileText, ShieldAlert, User, AlertTriangle } from "lucide-react";
 
-export type MobileTab = "beranda" | "peta" | "komunitas" | "mitigasi" | "profil";
+export type MobileTab = "beranda" | "peta" | "laporan" | "mitigasi" | "profil";
 
 interface MobileBottomNavProps {
   currentTab: MobileTab;
@@ -17,7 +17,7 @@ export function MobileBottomNav({
   const tabs = [
     { id: "beranda" as MobileTab, label: "Beranda", icon: Home },
     { id: "peta" as MobileTab, label: "Peta", icon: Map },
-    { id: "komunitas" as MobileTab, label: "Komunitas", icon: Users },
+    { id: "laporan" as MobileTab, label: "Laporan", icon: FileText },
     { id: "mitigasi" as MobileTab, label: "Mitigasi", icon: ShieldAlert },
     { id: "profil" as MobileTab, label: "Profil", icon: User },
   ];
