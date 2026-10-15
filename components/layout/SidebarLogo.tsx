@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarLogoProps {
@@ -32,7 +31,18 @@ export function SidebarLogo({ onClick, src, className }: SidebarLogoProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="size-full rounded-[10px] object-cover" />
         ) : (
-          <ShieldCheck className="size-5" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-5 text-emerald-300"
+          >
+            <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
+            <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
+          </svg>
         )}
       </span>
       <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">

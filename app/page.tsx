@@ -4,9 +4,9 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { getAdm4ByLocation, findClosestBMKGRegion } from "@/lib/bmkg";
 import { hitungSkorBanjir } from "@/lib/risiko";
 import { getEvacuationPointsForLocation, getDefaultCoordinatesForLocation } from "@/lib/evakuasi";
-import { 
-  DesktopSidebar, 
-  NavTab 
+import {
+  DesktopSidebar,
+  NavTab
 } from "@/components/layout/DesktopSidebar";
 import { DesktopTopbar } from "@/components/layout/DesktopTopbar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -39,23 +39,24 @@ import { RiskAlertModal } from "@/components/ui/RiskAlertModal";
 import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
 import { useAuth } from "@/lib/context/AuthContext";
 import { LoginReminderOverlay } from "@/components/auth/LoginReminderOverlay";
-import { 
-  mockCurrentWeather, 
-  mockForecast5Days, 
-  mockEmergencyFullWarning, 
-  mockEvacuationPoints, 
-  mockCommunityReports 
+import {
+  mockCurrentWeather,
+  mockForecast5Days,
+  mockActiveWarning,
+  mockEmergencyFullWarning,
+  mockEvacuationPoints,
+  mockCommunityReports
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning } from "@/types";
-import { 
-  DownloadCloud, 
-  Layers, 
-  ShieldCheck, 
-  User, 
-  Trash2, 
-  AlertTriangle, 
-  LogIn, 
-  LogOut, 
+import {
+  DownloadCloud,
+  Layers,
+  ShieldCheck,
+  User,
+  Trash2,
+  AlertTriangle,
+  LogIn,
+  LogOut,
   Loader2,
   RefreshCw
 } from "lucide-react";
@@ -135,7 +136,7 @@ export default function SiagaKitaApp() {
         let storedLikes: string[] = [];
         try {
           storedLikes = JSON.parse(localStorage.getItem("siagakita_confirmed_reports") || "[]");
-        } catch {}
+        } catch { }
 
         const mappedReports: CommunityReport[] = json.reports.map((r: any) => ({
           id: r.id,
@@ -170,8 +171,8 @@ export default function SiagaKitaApp() {
   }, [currentLocation]);
 
   const handleSelectLocation = (
-    locationName: string, 
-    adm4Code?: string, 
+    locationName: string,
+    adm4Code?: string,
     preciseCoords?: { lat: number; lng: number; accuracy?: number }
   ) => {
     setCurrentLocation(locationName);
@@ -331,20 +332,22 @@ export default function SiagaKitaApp() {
 
   // warningDismissed: true = user sudah konfirmasi "Saya Aman" → badge sidebar hilang & modal/notif tidak muncul lagi
   const [warningDismissed, setWarningDismissed] = useState<boolean>(false);
-  // showRiskAlertModal: popup modal otomatis untuk risiko tinggi (siaga/awas)
+  // showRiskAlertModal: popup modal untuk risiko tinggi (siaga/awas)
   const [showRiskAlertModal, setShowRiskAlertModal] = useState<boolean>(false);
-  // hasAutoShownAlert: agar alert hanya muncul sekali per sesi / per perubahan lokasi
+  // modalAlertWarning: jika null gunakan dynamicWarning (data asli BMKG), jika diisi gunakan data simulasi
+  const [modalAlertWarning, setModalAlertWarning] = useState<ActiveWarning | null>(null);
+  // hasAutoShownAlert: agar alert otomatis hanya muncul sekali per sesi
   const [hasAutoShownAlert, setHasAutoShownAlert] = useState<boolean>(false);
 
-  // Auto-show notifikasi berdasarkan level risiko setelah data cuaca selesai dimuat
+  // Auto-show notifikasi berdasarkan level risiko asli BMKG setelah data cuaca selesai dimuat
   useEffect(() => {
     if (isLoadingWeather || warningDismissed) return;
 
     const level = currentRisk.level;
 
     if ((level === "siaga" || level === "awas") && !hasAutoShownAlert) {
-      // Risiko tinggi → tampilkan popup modal secara cepat & mulus (400ms)
       const t = setTimeout(() => {
+        setModalAlertWarning(null);
         setShowRiskAlertModal(true);
         setHasAutoShownAlert(true);
       }, 400);
@@ -352,7 +355,6 @@ export default function SiagaKitaApp() {
     }
 
     if (level === "waspada" && !hasAutoShownAlert) {
-      // Risiko sedang → tampilkan web push notification (400ms)
       const t = setTimeout(() => {
         setShowPushNotification(true);
         setHasAutoShownAlert(true);
@@ -361,18 +363,47 @@ export default function SiagaKitaApp() {
     }
   }, [currentRisk.level, isLoadingWeather, hasAutoShownAlert, warningDismissed]);
 
-  // Reset hasAutoShownAlert saat lokasi berubah agar notifikasi muncul kembali
+  // Reset saat lokasi berubah agar notifikasi riil muncul kembali
   useEffect(() => {
     setHasAutoShownAlert(false);
     setWarningDismissed(false);
     setShowRiskAlertModal(false);
+    setModalAlertWarning(null);
     setShowPushNotification(false);
   }, [currentLocation]);
+
+  // Handler uji coba pop-up peringatan risiko tinggi (manual dari sidebar)
+  const handleTriggerTestRiskAlert = () => {
+    const testWarning: ActiveWarning = {
+      id: `test-warn-siaga-${Date.now()}`,
+      title: `Peringatan Dini Banjir Bandang & Cuaca Ekstrem`,
+      hazardType: "Banjir Bandang & Luapan Sungai",
+      level: "Siaga",
+      affectedArea: currentLocation,
+      validPeriod: "Berlaku hingga 3 jam ke depan",
+      issuedTime: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+      source: "Simulasi",
+      description: `Curah hujan ekstrem dan kenaikan debit air sungai berpotensi menimbulkan banjir di wilayah ${currentLocation}.`,
+      whatHappened: `Hujan lebat disertai angin kencang berdurasi panjang menyebabkan kenaikan tinggi muka air sungai secara drastis di wilayah ${currentLocation}. Ketinggian genangan air berpotensi mencapai 60-120 cm.`,
+      whereLocation: `Kawasan bantaran sungai dan permukiman dataran rendah di ${currentLocation}.`,
+      howSevere: "Tingkat Risiko Tinggi (Level Siaga). Seluruh warga di sekitar aliran air diimbau segera bersiap evakuasi mandiri.",
+      instructions: [
+        "Pindahkan dokumen penting dan barang elektronik ke area yang lebih tinggi.",
+        "Matikan sekring listrik utama dan cabut regulator tabung gas.",
+        "Prioritaskan keselamatan lansia, anak-anak, dan anggota keluarga rentan.",
+        "Segera menuju ke Titik Kumpul / Tempat Evakuasi Sementara (TES) terdekat.",
+      ],
+      isDemoSimulation: true,
+    };
+    setModalAlertWarning(testWarning);
+    setShowRiskAlertModal(true);
+  };
 
   // Handler konfirmasi Saya Aman → tutup semua peringatan & hilangkan badge
   const handleSayaAmanConfirmed = () => {
     setWarningDismissed(true);
     setShowRiskAlertModal(false);
+    setModalAlertWarning(null);
     setShowPushNotification(false);
     setShowSayaAmanModal(true);
   };
@@ -400,10 +431,10 @@ export default function SiagaKitaApp() {
       prev.map((rep) =>
         rep.id === reportId
           ? {
-              ...rep,
-              confirmationsCount: (rep.confirmationsCount ?? 0) + 1,
-              userConfirmed: true,
-            }
+            ...rep,
+            confirmationsCount: (rep.confirmationsCount ?? 0) + 1,
+            userConfirmed: true,
+          }
           : rep
       )
     );
@@ -414,7 +445,7 @@ export default function SiagaKitaApp() {
       if (!stored.includes(reportId)) {
         localStorage.setItem("siagakita_confirmed_reports", JSON.stringify([...stored, reportId]));
       }
-    } catch {}
+    } catch { }
 
     // 4. Panggil database API hanya 1 kali per like
     try {
@@ -431,11 +462,11 @@ export default function SiagaKitaApp() {
             prev.map((rep) =>
               rep.id === reportId
                 ? {
-                    ...rep,
-                    confirmationsCount: json.konfirmasi_count,
-                    status: json.status === "terverifikasi" ? "Terverifikasi" : rep.status,
-                    userConfirmed: true,
-                  }
+                  ...rep,
+                  confirmationsCount: json.konfirmasi_count,
+                  status: json.status === "terverifikasi" ? "Terverifikasi" : rep.status,
+                  userConfirmed: true,
+                }
                 : rep
             )
           );
@@ -657,86 +688,86 @@ export default function SiagaKitaApp() {
         >
           <div className="flex min-h-screen w-full">
             {/* Desktop Left Sidebar */}
-          <DesktopSidebar
-            currentTab={currentTab}
-            onSelectTab={(tab) => {
-              if (tab === "peringatan") {
-                // Klik ikon peringatan di sidebar → buka modal/detail peringatan aktif
-                const level = currentRisk.level;
-                if ((level === "siaga" || level === "awas") && !warningDismissed) {
-                  setShowRiskAlertModal(true);
-                } else if (level === "waspada" && !warningDismissed) {
-                  setShowPushNotification(true);
+            <DesktopSidebar
+              currentTab={currentTab}
+              onSelectTab={(tab) => {
+                if (tab === "peringatan") {
+                  const level = currentRisk.level;
+                  if ((level === "siaga" || level === "awas") && !warningDismissed) {
+                    setModalAlertWarning(null);
+                    setShowRiskAlertModal(true);
+                  } else if (level === "waspada" && !warningDismissed) {
+                    setShowPushNotification(true);
+                  } else {
+                    setShowEmergencyFullscreen(true);
+                  }
+                } else if (tab === "tokens") {
+                  setViewportMode("tokens");
                 } else {
-                  setShowEmergencyFullscreen(true);
+                  setCurrentTab(tab);
                 }
-              } else if (tab === "tokens") {
-                setViewportMode("tokens");
-              } else {
-                setCurrentTab(tab);
-              }
-            }}
-            warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
-          />
-
-          {/* Desktop Main Content Container */}
-          <div className="flex-1 flex flex-col min-w-0">
-            {/* Topbar */}
-            <DesktopTopbar
-              currentLocation={currentLocation}
-              onLocationChange={(loc) => {
-                handleSelectLocation(loc);
               }}
-              onOpenLocationModal={() => setShowLocationModal(true)}
-              isOnline={isOnline}
-              onToggleOnline={() => setIsOnline(!isOnline)}
-              onOpenNotifications={() => setShowPushNotification(true)}
+              warningCount={1}
             />
 
-            {/* Main Page Body */}
-            <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-              {/* SCREEN A: DESKTOP BERANDA (DASHBOARD) */}
-              {currentTab === "beranda" && (
-                <div className="space-y-6">
-                  {/* Greeting & Subtitle matching visual reference */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h1 className="text-2xl font-bold tracking-tight text-[#17211D]">
-                        Halo, Adam 👋
-                      </h1>
-                      <p className="text-xs md:text-sm text-[#68756E] mt-1">
-                        Pantau kondisi cuaca dan risiko bencana di wilayahmu agar selalu siap.
-                      </p>
+            {/* Desktop Main Content Container */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Topbar */}
+              <DesktopTopbar
+                currentLocation={currentLocation}
+                onLocationChange={(loc) => {
+                  handleSelectLocation(loc);
+                }}
+                onOpenLocationModal={() => setShowLocationModal(true)}
+                isOnline={isOnline}
+                onToggleOnline={() => setIsOnline(!isOnline)}
+                onOpenNotifications={() => setShowPushNotification(true)}
+              />
+
+              {/* Main Page Body */}
+              <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+                {/* SCREEN A: DESKTOP BERANDA (DASHBOARD) */}
+                {currentTab === "beranda" && (
+                  <div className="space-y-6">
+                    {/* Greeting & Subtitle matching visual reference */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-[#17211D]">
+                          Halo, Adam 👋
+                        </h1>
+                        <p className="text-xs md:text-sm text-[#68756E] mt-1">
+                          Pantau kondisi cuaca dan risiko bencana di wilayahmu agar selalu siap.
+                        </p>
+                      </div>
+
+                      {!isOnline && (
+                        <div className="bg-[#FEF1E6] text-[#C96B10] px-3 py-1 rounded-[10px] border border-[#FBD6B5] text-xs font-semibold flex items-center gap-1.5">
+                          <span>Mode Offline Aktif (Menampilkan Cache Terakhir)</span>
+                        </div>
+                      )}
                     </div>
 
-                    {!isOnline && (
-                      <div className="bg-[#FEF1E6] text-[#C96B10] px-3 py-1 rounded-[10px] border border-[#FBD6B5] text-xs font-semibold flex items-center gap-1.5">
-                        <span>Mode Offline</span>
-                      </div>
-                    )}
-                  </div>
+                    {/* Top Summary Row (3 Cards: Cuaca, Status Risiko, Peringatan Aktif) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <WeatherCard
+                        weather={currentWeather}
+                        isLoading={isLoadingWeather}
+                        onRefresh={() => fetchWeather(currentLocation)}
+                        onOpenLocationModal={() => setShowLocationModal(true)}
+                      />
+                      <RiskStatusCard
+                        level={currentRisk.level}
+                        location={currentLocation}
+                        onViewRiskDetails={() => setCurrentTab("peta")}
+                      />
+                      <WarningCard
+                        warning={dynamicWarning}
+                        onOpenWarning={() => setShowEmergencyFullscreen(true)}
+                      />
+                    </div>
 
-                  {/* Top Summary Row (3 Cards: Cuaca, Status Risiko, Peringatan Aktif) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <WeatherCard 
-                      weather={currentWeather} 
-                      isLoading={isLoadingWeather}
-                      onRefresh={() => fetchWeather(currentLocation)}
-                      onOpenLocationModal={() => setShowLocationModal(true)}
-                    />
-                    <RiskStatusCard
-                      level={currentRisk.level}
-                      location={currentLocation}
-                      onViewRiskDetails={() => setCurrentTab("peta")}
-                    />
-                    <WarningCard
-                      warning={dynamicWarning}
-                      onOpenWarning={() => setShowEmergencyFullscreen(true)}
-                    />
-                  </div>
-
-                  {/* 3 Shortcut Cards */}
-                  <ShortcutCards onNavigate={(tab) => setCurrentTab(tab)} />
+                    {/* 3 Shortcut Cards */}
+                    <ShortcutCards onNavigate={(tab) => setCurrentTab(tab)} />
 
                   {/* Lower Row: 5-Day Forecast, Tindakan Cepat, Education Hero Banner */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
@@ -783,309 +814,307 @@ export default function SiagaKitaApp() {
                   </div>
 
                   {/* Interactive Map Filter Tabs */}
-                  <div className="flex items-center justify-between border-b border-[#E6EBE8] pb-2">
-                    <div className="flex items-center gap-2 overflow-x-auto">
-                      {[
-                        { id: "evakuasi", label: "Peta & Titik Evakuasi" },
-                        { id: "rute", label: "Rute Evakuasi" },
-                        { id: "laporan", label: "Laporan Warga" },
-                      ].map((tab) => (
-                        <button
-                          key={tab.id}
-                          onClick={() => {
-                            setMapLayerTab(tab.id as any);
-                            setShowRoute(tab.id === "rute");
-                          }}
-                          className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
-                            mapLayerTab === tab.id
-                              ? "bg-[#176B4D] text-white shadow-sm"
-                              : "bg-white text-[#68756E] border border-[#E6EBE8] hover:bg-[#F8FAF9]"
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {mapLayerTab === "laporan" && (
-                      <button
-                        onClick={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                        disabled={isRefreshingReports}
-                        className="px-3 py-1.5 rounded-[10px] text-xs font-bold bg-white hover:bg-[#F8FAF9] active:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60 shrink-0"
-                        title="Segarkan pin laporan warga di peta"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingReports ? "animate-spin" : ""}`} />
-                        <span className="hidden sm:inline">{isRefreshingReports ? "Memuat..." : "Segarkan Laporan"}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Map Grid Layout (75% Map + 25% Detail Panel) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                    <div className="lg:col-span-8">
-                      <InteractiveRiskMap
-                        evacuationPoints={currentEvacuationPoints}
-                        communityReports={communityReports}
-                        selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
-                        focusTimestamp={focusTimestamp}
-                        onSelectPoint={handleSelectEvacuationPoint}
-                        showRoute={showRoute}
-                        activeLayer={mapLayerTab}
-                        locationName={currentLocation}
-                        riskLevel={currentRisk.level}
-                        userCoords={userCoords}
-                        onUpdateCoords={setUserCoords}
-                        onSelectCity={handleSelectLocation}
-                        onLocateGPS={() => setShowLocationModal(true)}
-                      />
-                    </div>
-                    <div className="lg:col-span-4 h-full">
-                      <MapDetailsPanel
-                        selectedArea={currentLocation}
-                        riskLevel={currentRisk.level}
-                        hujan24jMm={currentRisk.h24}
-                        mukaAirStatus={currentRisk.mukaAirText}
-                        weatherCondition={currentWeather.condition}
-                        temp={currentWeather.temp}
-                        humidity={currentWeather.humidity}
-                        windSpeed={currentWeather.windSpeed}
-                        evacuationPoints={currentEvacuationPoints}
-                        selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
-                        onSelectPoint={handleSelectEvacuationPoint}
-                        onStartRouteNavigation={handleStartRouteNavigation}
-                        onOpenOfflineDownload={() => setShowOfflineModal(true)}
-                        isMapOfflineDownloaded={isMapOfflineDownloaded}
-                        isGpsActive={Boolean(userCoords)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SCREEN D: LAPORAN WARGA */}
-              {currentTab === "laporan" && (
-                <div className="relative min-h-[520px]">
-                  <div
-                    className={
-                      isGuestMode
-                        ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
-                        : ""
-                    }
-                  >
-                    <div className="space-y-4">
-                      <div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                          Forum Kondisi Lokal
-                        </h1>
-                        <p className="text-xs text-[#68756E] mt-0.5">
-                          Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
-                        </p>
+                    <div className="flex items-center justify-between border-b border-[#E6EBE8] pb-2">
+                      <div className="flex items-center gap-2 overflow-x-auto">
+                        {[
+                          { id: "evakuasi", label: "Peta & Titik Evakuasi" },
+                          { id: "rute", label: "Rute Evakuasi" },
+                          { id: "laporan", label: "Laporan Warga" },
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            onClick={() => {
+                              setMapLayerTab(tab.id as any);
+                              setShowRoute(tab.id === "rute");
+                            }}
+                            className={`px-4 py-1.5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${mapLayerTab === tab.id
+                                ? "bg-[#176B4D] text-white shadow-sm"
+                                : "bg-white text-[#68756E] border border-[#E6EBE8] hover:bg-[#F8FAF9]"
+                              }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
                       </div>
 
-                      <CommunityFeed
-                        reports={communityReports}
-                        onOpenCreateModal={() => {
-                          if (isGuestMode) return;
-                          setShowCreateReportModal(true);
-                        }}
-                        onNavigateToMap={(rep) => {
-                          setCurrentTab("peta");
-                          setMapLayerTab("laporan");
-                        }}
-                        onConfirmReport={handleConfirmReport}
-                        onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                        isRefreshing={isRefreshingReports}
-                      />
+                      {mapLayerTab === "laporan" && (
+                        <button
+                          onClick={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                          disabled={isRefreshingReports}
+                          className="px-3 py-1.5 rounded-[10px] text-xs font-bold bg-white hover:bg-[#F8FAF9] active:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60 shrink-0"
+                          title="Segarkan pin laporan warga di peta"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingReports ? "animate-spin" : ""}`} />
+                          <span className="hidden sm:inline">{isRefreshingReports ? "Memuat..." : "Segarkan Laporan"}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Map Grid Layout (75% Map + 25% Detail Panel) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                      <div className="lg:col-span-8">
+                        <InteractiveRiskMap
+                          evacuationPoints={currentEvacuationPoints}
+                          communityReports={communityReports}
+                          selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
+                          focusTimestamp={focusTimestamp}
+                          onSelectPoint={handleSelectEvacuationPoint}
+                          showRoute={showRoute}
+                          activeLayer={mapLayerTab}
+                          locationName={currentLocation}
+                          riskLevel={currentRisk.level}
+                          userCoords={userCoords}
+                          onUpdateCoords={setUserCoords}
+                          onSelectCity={handleSelectLocation}
+                          onLocateGPS={() => setShowLocationModal(true)}
+                        />
+                      </div>
+                      <div className="lg:col-span-4 h-full">
+                        <MapDetailsPanel
+                          selectedArea={currentLocation}
+                          riskLevel={currentRisk.level}
+                          hujan24jMm={currentRisk.h24}
+                          mukaAirStatus={currentRisk.mukaAirText}
+                          weatherCondition={currentWeather.condition}
+                          temp={currentWeather.temp}
+                          humidity={currentWeather.humidity}
+                          windSpeed={currentWeather.windSpeed}
+                          evacuationPoints={currentEvacuationPoints}
+                          selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
+                          onSelectPoint={handleSelectEvacuationPoint}
+                          onStartRouteNavigation={handleStartRouteNavigation}
+                          onOpenOfflineDownload={() => setShowOfflineModal(true)}
+                          isMapOfflineDownloaded={isMapOfflineDownloaded}
+                          isGpsActive={Boolean(userCoords)}
+                        />
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {isGuestMode && (
-                    <LoginReminderOverlay
-                      onBackToHome={() => setCurrentTab("beranda")}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* SCREEN E: MITIGASI & TAS SIAGA */}
-              {currentTab === "mitigasi" && (
-                <div className="space-y-4">
-                  <div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                      Panduan Mitigasi Bencana
-                    </h1>
-                    <p className="text-xs text-[#68756E] mt-0.5">
-                      Kenali langkah yang tepat sebelum, saat, dan setelah bencana terjadi.
-                    </p>
-                  </div>
-
-                  <MitigationGuide />
-                </div>
-              )}
-
-              {/* SCREEN PENGATURAN & PROFIL AKUN */}
-              {currentTab === "pengaturan" && (
-                <div className="space-y-6 max-w-4xl pb-12">
-                  <div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                      Pengaturan & Profil Akun
-                    </h1>
-                    <p className="text-xs text-[#68756E] mt-0.5">
-                      Kelola profil identitas, hak privasi (UU PDP), penyimpanan peta offline, dan notifikasi darurat.
-                    </p>
-                  </div>
-
-                  {/* KARTU PROFIL PENGGUNA */}
-                  <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F4F2]">
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-12 h-12 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-base ring-4 ring-[#E5F5EA] shrink-0">
-                          {user?.nama ? user.nama.trim().slice(0, 2).toUpperCase() : "WG"}
-                        </div>
+                {/* SCREEN D: LAPORAN WARGA */}
+                {currentTab === "laporan" && (
+                  <div className="relative min-h-[520px]">
+                    <div
+                      className={
+                        isGuestMode
+                          ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
+                          : ""
+                      }
+                    >
+                      <div className="space-y-4">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h2 className="text-sm md:text-base font-bold text-[#17211D]">
-                              {user?.nama || "Pengguna Siaga"}
-                            </h2>
-                            <span
-                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                                isGuest || user?.is_anonymous
-                                  ? "bg-[#FEF1E6] text-[#C96B10]"
-                                  : "bg-[#E5F5EA] text-[#176B4D]"
-                              }`}
-                            >
-                              {isGuest || user?.is_anonymous
-                                ? "Mode Tamu"
-                                : user?.role === "relawan"
-                                ? "Relawan Siaga"
-                                : user?.role === "admin"
-                                ? "Admin Wilayah"
-                                : "Pengguna Warga Terdaftar"}
-                            </span>
-                          </div>
+                          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
+                            Forum Kondisi Lokal
+                          </h1>
                           <p className="text-xs text-[#68756E] mt-0.5">
-                            {user?.email || (isGuest ? "Sesi penjelajahan tamu terbatas" : "Tidak ada email")}
+                            Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
                           </p>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        {isGuest || user?.is_anonymous ? (
-                          <a
-                            href="/login"
-                            className="py-2 px-3.5 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-                          >
-                            <LogIn className="w-3.5 h-3.5" />
-                            <span>Daftar / Masuk Akun</span>
-                          </a>
-                        ) : (
-                          <button
-                            onClick={() => logout()}
-                            className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E] hover:text-[#17211D] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <LogOut className="w-3.5 h-3.5" />
-                            <span>Keluar Sesi</span>
-                          </button>
-                        )}
+                        <CommunityFeed
+                          reports={communityReports}
+                          onOpenCreateModal={() => {
+                            if (isGuestMode) return;
+                            setShowCreateReportModal(true);
+                          }}
+                          onNavigateToMap={(rep) => {
+                            setCurrentTab("peta");
+                            setMapLayerTab("laporan");
+                          }}
+                          onConfirmReport={handleConfirmReport}
+                          onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                          isRefreshing={isRefreshingReports}
+                        />
                       </div>
                     </div>
 
-                    {/* Detail Akun Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
-                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
-                          Status Identitas
-                        </span>
-                        <span className="font-semibold text-[#17211D] flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5 text-[#176B4D]" />
-                          {isGuest || user?.is_anonymous ? "Tamu Sementara" : "Terverifikasi Aktif"}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
-                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
-                          Wilayah Pantauan
-                        </span>
-                        <span className="font-semibold text-[#17211D]">
-                          {currentLocation}
-                        </span>
-                      </div>
-                      <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
-                        <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
-                          Perlindungan Data
-                        </span>
-                        <span className="font-semibold text-[#176B4D]">
-                          UU PDP No. 27/2022
-                        </span>
-                      </div>
-                    </div>
+                    {isGuestMode && (
+                      <LoginReminderOverlay
+                        onBackToHome={() => setCurrentTab("beranda")}
+                      />
+                    )}
                   </div>
+                )}
 
-                  {/* LAYANAN OFFLINE & NOTIFIKASI */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-                      <h3 className="text-xs font-bold text-[#17211D]">Penyimpanan PWA Offline</h3>
-                      <p className="text-xs text-[#68756E]">
-                        Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda untuk akses darurat tanpa internet.
+                {/* SCREEN E: MITIGASI & TAS SIAGA */}
+                {currentTab === "mitigasi" && (
+                  <div className="space-y-4">
+                    <div>
+                      <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
+                        Panduan Mitigasi Bencana
+                      </h1>
+                      <p className="text-xs text-[#68756E] mt-0.5">
+                        Kenali langkah yang tepat sebelum, saat, dan setelah bencana terjadi.
                       </p>
-                      <button
-                        onClick={() => setShowOfflineModal(true)}
-                        className="py-2 px-4 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <DownloadCloud className="w-4 h-4" />
-                        <span>Kelola Peta Offline</span>
-                      </button>
                     </div>
 
-                    <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-                      <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
-                      <p className="text-xs text-[#68756E]">
-                        Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
-                      </p>
-                      <button
-                        onClick={() => setShowPushNotification(true)}
-                        className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
-                      >
-                        Tes Kirim Notifikasi Push
-                      </button>
-                    </div>
+                    <MitigationGuide />
                   </div>
+                )}
 
-                  {/* ZONA BAHAYA: HAK PEMUSNAHAN DATA PRIBADI (UU PDP NO. 27 TAHUN 2022) */}
-                  {!isGuest && !user?.is_anonymous ? (
-                    <div className="bg-[#FFF8F8] rounded-[16px] border border-[#F9C1C1] p-5 shadow-sm space-y-3">
-                      <div className="flex items-center gap-2 text-[#D64545]">
-                        <AlertTriangle className="w-4 h-4" />
-                        <h3 className="text-xs font-bold uppercase tracking-wider">
-                          Zona Bahaya: Hak Pemusnahan Data Pribadi (UU PDP)
-                        </h3>
-                      </div>
-                      <p className="text-xs text-[#68756E] leading-relaxed">
-                        Berdasarkan <strong>Pasal 8 & Pasal 43 UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP)</strong>, sebagai subjek data Anda berhak mengakhiri pemrosesan dan memusnahkan data pribadi Anda secara permanen. Menghapus akun akan memusnahkan akun, riwayat laporan warga, data foto/koordinat lapangan, dan preferensi Anda dari sistem kami tanpa dapat dipulihkan kembali.
+                {/* SCREEN PENGATURAN & PROFIL AKUN */}
+                {currentTab === "pengaturan" && (
+                  <div className="space-y-6 max-w-4xl pb-12">
+                    <div>
+                      <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
+                        Pengaturan & Profil Akun
+                      </h1>
+                      <p className="text-xs text-[#68756E] mt-0.5">
+                        Kelola profil identitas, hak privasi (UU PDP), penyimpanan peta offline, dan notifikasi darurat.
                       </p>
-                      <div className="pt-1">
+                    </div>
+
+                    {/* KARTU PROFIL PENGGUNA */}
+                    <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F1F4F2]">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-full bg-[#176B4D] text-white flex items-center justify-center font-bold text-base ring-4 ring-[#E5F5EA] shrink-0">
+                            {user?.nama ? user.nama.trim().slice(0, 2).toUpperCase() : "WG"}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-sm md:text-base font-bold text-[#17211D]">
+                                {user?.nama || "Pengguna Siaga"}
+                              </h2>
+                              <span
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${isGuest || user?.is_anonymous
+                                    ? "bg-[#FEF1E6] text-[#C96B10]"
+                                    : "bg-[#E5F5EA] text-[#176B4D]"
+                                  }`}
+                              >
+                                {isGuest || user?.is_anonymous
+                                  ? "Mode Tamu"
+                                  : user?.role === "relawan"
+                                    ? "Relawan Siaga"
+                                    : user?.role === "admin"
+                                      ? "Admin Wilayah"
+                                      : "Pengguna Warga Terdaftar"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#68756E] mt-0.5">
+                              {user?.email || (isGuest ? "Sesi penjelajahan tamu terbatas" : "Tidak ada email")}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isGuest || user?.is_anonymous ? (
+                            <a
+                              href="/login"
+                              className="py-2 px-3.5 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                            >
+                              <LogIn className="w-3.5 h-3.5" />
+                              <span>Daftar / Masuk Akun</span>
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => logout()}
+                              className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E] hover:text-[#17211D] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <LogOut className="w-3.5 h-3.5" />
+                              <span>Keluar Sesi</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Detail Akun Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                          <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                            Status Identitas
+                          </span>
+                          <span className="font-semibold text-[#17211D] flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#176B4D]" />
+                            {isGuest || user?.is_anonymous ? "Tamu Sementara" : "Terverifikasi Aktif"}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                          <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                            Wilayah Pantauan
+                          </span>
+                          <span className="font-semibold text-[#17211D]">
+                            {currentLocation}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8]">
+                          <span className="text-[10px] uppercase font-bold text-[#68756E] block mb-1">
+                            Perlindungan Data
+                          </span>
+                          <span className="font-semibold text-[#176B4D]">
+                            UU PDP No. 27/2022
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* LAYANAN OFFLINE & NOTIFIKASI */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
+                        <h3 className="text-xs font-bold text-[#17211D]">Penyimpanan PWA Offline</h3>
+                        <p className="text-xs text-[#68756E]">
+                          Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda untuk akses darurat tanpa internet.
+                        </p>
                         <button
-                          onClick={() => setShowDeleteAccountModal(true)}
-                          className="py-2 px-4 rounded-[10px] bg-[#D64545] hover:bg-[#B83838] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                          onClick={() => setShowOfflineModal(true)}
+                          className="py-2 px-4 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Hapus Akun & Data Pribadi Permanen</span>
+                          <DownloadCloud className="w-4 h-4" />
+                          <span>Kelola Peta Offline</span>
+                        </button>
+                      </div>
+
+                      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
+                        <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
+                        <p className="text-xs text-[#68756E]">
+                          Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
+                        </p>
+                        <button
+                          onClick={() => setShowPushNotification(true)}
+                          className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          Tes Kirim Notifikasi Push
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <div className="bg-[#F8FAF9] rounded-[16px] border border-[#E6EBE8] p-4 text-xs text-[#68756E] flex items-center justify-between">
-                      <span>Anda saat ini menggunakan akun tamu sementara. Tidak ada data profil pribadi permanen yang tersimpan di server.</span>
-                      <a href="/login" className="font-bold text-[#176B4D] hover:underline shrink-0 ml-3">
-                        Daftar Akun Warga &rarr;
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-            </main>
+
+                    {/* ZONA BAHAYA: HAK PEMUSNAHAN DATA PRIBADI (UU PDP NO. 27 TAHUN 2022) */}
+                    {!isGuest && !user?.is_anonymous ? (
+                      <div className="bg-[#FFF8F8] rounded-[16px] border border-[#F9C1C1] p-5 shadow-sm space-y-3">
+                        <div className="flex items-center gap-2 text-[#D64545]">
+                          <AlertTriangle className="w-4 h-4" />
+                          <h3 className="text-xs font-bold uppercase tracking-wider">
+                            Zona Bahaya: Hak Pemusnahan Data Pribadi (UU PDP)
+                          </h3>
+                        </div>
+                        <p className="text-xs text-[#68756E] leading-relaxed">
+                          Berdasarkan <strong>Pasal 8 & Pasal 43 UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi (UU PDP)</strong>, sebagai subjek data Anda berhak mengakhiri pemrosesan dan memusnahkan data pribadi Anda secara permanen. Menghapus akun akan memusnahkan akun, riwayat laporan warga, data foto/koordinat lapangan, dan preferensi Anda dari sistem kami tanpa dapat dipulihkan kembali.
+                        </p>
+                        <div className="pt-1">
+                          <button
+                            onClick={() => setShowDeleteAccountModal(true)}
+                            className="py-2 px-4 rounded-[10px] bg-[#D64545] hover:bg-[#B83838] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus Akun & Data Pribadi Permanen</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-[#F8FAF9] rounded-[16px] border border-[#E6EBE8] p-4 text-xs text-[#68756E] flex items-center justify-between">
+                        <span>Anda saat ini menggunakan akun tamu sementara. Tidak ada data profil pribadi permanen yang tersimpan di server.</span>
+                        <a href="/login" className="font-bold text-[#176B4D] hover:underline shrink-0 ml-3">
+                          Daftar Akun Warga &rarr;
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </main>
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
       )}
 
       {/* Modals & Overlays */}
