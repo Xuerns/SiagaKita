@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { 
-  Search, 
+  Search,
   MapPin, 
   ChevronDown, 
   Crosshair, 
@@ -57,18 +57,10 @@ export function DesktopTopbar({
   }, [dropdownSearch]);
 
   return (
-    <header className="h-16 bg-white border-b border-[#E6EBE8] px-3 flex items-center justify-between sticky top-0 z-10">
-      {/* Search Bar & Sidebar Trigger */}
-      <div className="flex items-center gap-3">
+    <header className="h-16 bg-white border-b border-[#E6EBE8] px-3 flex items-center justify-between sticky top-0 z-40">
+      {/* Sidebar Trigger */}
+      <div className="flex items-center">
         <SidebarTrigger className="size-9 rounded-[10px] border border-[#E6EBE8] bg-white text-[#68756E] hover:border-[#CDD7D1] hover:bg-[#E5F5EA] hover:text-[#176B4D] cursor-pointer transition-colors" />
-        <div className="relative w-72 md:w-80">
-          <Search className="w-4 h-4 text-[#929D96] absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cari lokasi, wilayah, atau informasi..."
-            className="w-full pl-9 pr-4 py-2 bg-[#F8FAF9] rounded-[10px] text-xs md:text-sm text-[#17211D] placeholder:text-[#929D96] border border-[#E6EBE8] focus:outline-none focus:border-[#176B4D] focus:bg-white transition-all"
-          />
-        </div>
       </div>
 
       {/* Right controls */}
@@ -85,7 +77,7 @@ export function DesktopTopbar({
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 mt-1 w-64 bg-white rounded-[14px] shadow-xl border border-[#E6EBE8] py-2 z-40 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-1 w-64 bg-white rounded-[14px] shadow-xl border border-[#E6EBE8] py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3 pb-2 border-b border-[#F1F4F2] flex items-center justify-between">
                 <span className="text-[11px] font-bold text-[#17211D]">Pilih Kota / Kabupaten</span>
                 <span className="text-[10px] text-[#929D96]">{INDONESIA_REGIONS.length} Wilayah</span>

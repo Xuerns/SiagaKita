@@ -1,5 +1,5 @@
 import React from "react";
-import { CloudRain, Sun, CloudSun, Cloud, ArrowRight } from "lucide-react";
+import { CloudRain, Sun, CloudSun, Cloud } from "lucide-react";
 import { ForecastDay } from "@/types";
 
 export function ForecastSection({ forecast }: { forecast: ForecastDay[] }) {
@@ -12,17 +12,11 @@ export function ForecastSection({ forecast }: { forecast: ForecastDay[] }) {
 
   return (
     <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] h-full flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-xs md:text-sm font-bold text-[#17211D]">
-            Prakiraan Cuaca 5 Hari ke Depan
-          </h3>
-          <span className="text-[10px] text-[#929D96]">Sumber: BMKG & Open-Meteo</span>
-        </div>
-        <button className="text-[11px] font-semibold text-[#176B4D] hover:underline flex items-center gap-1">
-          <span>Lihat detail</span>
-          <ArrowRight className="w-3 h-3" />
-        </button>
+      <div className="mb-3">
+        <h3 className="text-xs md:text-sm font-bold text-[#17211D]">
+          Prakiraan Cuaca 5 Hari ke Depan
+        </h3>
+        <span className="text-[10px] text-[#929D96]">Sumber: BMKG & Open-Meteo</span>
       </div>
 
       <div className="grid grid-cols-5 gap-2 pt-2">
