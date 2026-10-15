@@ -22,7 +22,19 @@ vi.mock('@/lib/supabase/admin', () => ({
           }),
         }),
       }),
+      delete: vi.fn().mockReturnValue({
+        like: vi.fn().mockReturnValue({
+          lt: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [{ id: 'guest-old-1' }], error: null }),
+          }),
+        }),
+      }),
     })),
+    auth: {
+      admin: {
+        deleteUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      },
+    },
   })),
 }));
 
@@ -145,7 +157,7 @@ describe('Cron Ingest Cuaca & Risiko API (/api/cron/risiko)', () => {
   // GET /api/cron/bersih
   // ==========================================
   describe('GET /api/cron/bersih', () => {
-    it('Good Route: Berhasil membersihkan laporan kedaluwarsa dengan token secret', async () => {
+    it('Good Route: Berhasil membersihkan laporan kedaluwarsa dan akun tamu lama (> 7 hari)', async () => {
       const { GET: cronBersihHandler } = await import('@/app/api/cron/bersih/route');
 
       const req = new NextRequest(`http://localhost:3000/api/cron/bersih?secret=${TEST_SECRET}`, {
@@ -158,6 +170,24 @@ describe('Cron Ingest Cuaca & Risiko API (/api/cron/risiko)', () => {
       expect(res.status).toBe(200);
       expect(json.success).toBe(true);
       expect(json.total_dibersihkan).toBeDefined();
+      expect(json.total_laporan_dibersihkan).toBe(1);
+      expect(json.total_tamu_dibersihkan).toBe(1);
+      expect(json.guest_retention_days).toBe(7);
+    });
+
+    it('Good Route: Mengizinkan kustomisasi rentang hari retensi tamu (?guest_days=14)', async () => {
+      const { GET: cronBersihHandler } = await import('@/app/api/cron/bersih/route');
+
+      const req = new NextRequest(`http://localhost:3000/api/cron/bersih?secret=${TEST_SECRET}&guest_days=14`, {
+        method: 'GET',
+      });
+
+      const res = await cronBersihHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.guest_retention_days).toBe(14);
     });
 
     it('Bad Route: Ditolak dengan 401 jika secret tidak disertakan', async () => {

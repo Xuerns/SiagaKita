@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, MapPin, Clock, ThumbsUp, RefreshCw, AlertCircle } from "lucide-react";
+import { Plus, ThumbsUp, RefreshCw, AlertCircle } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { VerificationBadge } from "../ui/Badge";
 

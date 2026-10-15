@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { DownloadCloud, CheckCircle2, HardDrive, X, RefreshCw, AlertCircle } from "lucide-react";
+import { DownloadCloud, CheckCircle2, X, AlertCircle } from "lucide-react";
+import { EvacuationPoint } from "@/types";
+import { saveOfflineEvacuationPoints, clearOfflineEvacuationPoints } from "@/lib/offline/db";
 
 interface OfflineMapModalProps {
   isOpen: boolean;
@@ -7,6 +9,7 @@ interface OfflineMapModalProps {
   isDownloaded: boolean;
   onDownloadComplete: () => void;
   onRemoveDownload: () => void;
+  points?: EvacuationPoint[];
 }
 
 export function OfflineMapModal({
@@ -15,6 +18,7 @@ export function OfflineMapModal({
   isDownloaded,
   onDownloadComplete,
   onRemoveDownload,
+  points,
 }: OfflineMapModalProps) {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -29,6 +33,9 @@ export function OfflineMapModal({
         if (prev >= 100) {
           clearInterval(interval);
           setDownloading(false);
+          if (points && points.length > 0) {
+            saveOfflineEvacuationPoints(points);
+          }
           onDownloadComplete();
           return 100;
         }
@@ -116,6 +123,7 @@ export function OfflineMapModal({
             <>
               <button
                 onClick={() => {
+                  clearOfflineEvacuationPoints().catch(console.error);
                   onRemoveDownload();
                   onClose();
                 }}

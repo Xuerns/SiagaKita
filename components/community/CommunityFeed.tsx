@@ -7,15 +7,12 @@ import {
   ThumbsUp, 
   Eye, 
   AlertCircle, 
-  CheckCircle2, 
-  Filter,
   RefreshCw,
   ImageIcon,
   X
 } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { VerificationBadge } from "../ui/Badge";
-import { NavTab } from "../layout/DesktopSidebar";
 
 interface CommunityFeedProps {
   reports: CommunityReport[];

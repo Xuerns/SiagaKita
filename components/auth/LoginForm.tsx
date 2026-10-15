@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { 
   Mail, 
   Lock, 
   Eye, 
   EyeOff, 
   ArrowRight, 
-  ShieldCheck, 
   UserX,
   AlertCircle,
   CheckCircle2
@@ -21,7 +20,6 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect") || "/";
   const errorParam = searchParams.get("error");
@@ -298,6 +296,24 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           <UserX className="w-3.5 h-3.5 text-[#176B4D]" />
           <span>Masuk sebagai Tamu (Tanpa Akun)</span>
         </button>
+
+        {/* Demo Account Quick Access */}
+        <div className="p-2.5 bg-[#F8FAF9] rounded-[10px] border border-[#E6EBE8] flex items-center justify-between gap-2">
+          <div className="truncate">
+            <span className="text-[11px] font-bold text-[#17211D] block">Akun Uji Coba (Demo):</span>
+            <span className="text-[10px] text-[#68756E] block font-mono truncate">adam@siagakita.id</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEmail("adam@siagakita.id");
+              setPassword("password123");
+            }}
+            className="text-[10px] font-bold text-[#176B4D] bg-[#E5F5EA] hover:bg-[#D5EFE0] px-2.5 py-1 rounded-[8px] border border-[#CDD7D1] transition-colors cursor-pointer shrink-0"
+          >
+            Isi Otomatis
+          </button>
+        </div>
       </div>
 
       {/* Footer Switcher */}

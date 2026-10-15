@@ -369,12 +369,12 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
   });
 
   // ==========================================
-  // PATCH /api/laporan/[id] (Moderasi Relawan / Admin)
+  // PATCH /api/laporan/[id] (Moderasi Pemilik Laporan)
   // ==========================================
   describe('PATCH /api/laporan/[id] (Moderasi)', () => {
-    it('Good Route: Relawan berhasil memoderasi status laporan', async () => {
+    it('Good Route: Pemilik laporan berhasil memperbarui status laporannya', async () => {
       mockGetUser.mockResolvedValueOnce({
-        data: { user: { id: 'relawan-1' } },
+        data: { user: { id: 'warga-pemilik' } },
         error: null,
       });
 
@@ -382,7 +382,7 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockResolvedValueOnce({
-          data: { id: 'relawan-1', role: 'relawan' },
+          data: { id: 'rep-1', user_id: 'warga-pemilik' },
           error: null,
         }),
       });
@@ -396,7 +396,7 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
       const req = new NextRequest('http://localhost:3000/api/laporan/rep-1', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'ditolak', alasan: 'Laporan palsu / duplikat' }),
+        body: JSON.stringify({ status: 'disembunyikan', alasan: 'Situasi sudah kondusif' }),
       });
 
       const res = await moderateReportHandler(req, { params: Promise.resolve({ id: 'rep-1' }) });
@@ -404,12 +404,12 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
 
       expect(res.status).toBe(200);
       expect(json.success).toBe(true);
-      expect(json.status).toBe('ditolak');
+      expect(json.status).toBe('disembunyikan');
     });
 
-    it('Bad Route: Warga biasa ditolak 403 saat mencoba memoderasi laporan', async () => {
+    it('Bad Route: Pengguna lain ditolak 403 saat mencoba memoderasi laporan bukan miliknya', async () => {
       mockGetUser.mockResolvedValueOnce({
-        data: { user: { id: 'warga-biasa' } },
+        data: { user: { id: 'warga-lain' } },
         error: null,
       });
 
@@ -417,7 +417,7 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockResolvedValueOnce({
-          data: { id: 'warga-biasa', role: 'warga' },
+          data: { id: 'rep-1', user_id: 'warga-pemilik' },
           error: null,
         }),
       });
@@ -434,7 +434,7 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
       const json = await res.json();
 
       expect(res.status).toBe(403);
-      expect(json.error).toContain('Hanya Relawan atau Admin');
+      expect(json.error).toContain('Akses ditolak');
     });
   });
 });

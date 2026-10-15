@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
     const condition = bmkgData.weather.condition;
 
     let alertCreated = null;
-    // Jika BMKG mendeteksi Hujan Lebat / Hujan Petir / Ekstrem
+    let gempaAlertCreated = null;
+
+    // 1. Sinkronisasi Cuaca Ekstrem BMKG
     if (condition.includes('Lebat') || condition.includes('Petir')) {
       const alertPayload = {
         sumber: 'bmkg',
@@ -49,11 +51,40 @@ export async function GET(request: NextRequest) {
       alertCreated = data;
     }
 
+    // 2. Sinkronisasi Gempa BMKG Real-Time
+    try {
+      const { getBMKGLatestEarthquake } = await import('@/lib/gempa');
+      const { data: gempaData } = await getBMKGLatestEarthquake();
+
+      // Buat peringatan jika gempa berstatus waspada/siaga/awas (M >= 5.0 atau potensi tsunami)
+      if (gempaData.level !== 'Aman' || gempaData.magnitude >= 5.0) {
+        const gempaPayload = {
+          sumber: 'bmkg',
+          hazard: 'gempa',
+          level: gempaData.level.toLowerCase(),
+          region_id: DEMO_REGION.id,
+          apa: gempaData.rekomendasi.apa,
+          di_mana: gempaData.rekomendasi.di_mana,
+          seberapa_parah: gempaData.rekomendasi.seberapa_parah,
+          lakukan_ini: gempaData.rekomendasi.lakukan_ini.join(' '),
+          issued_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
+          raw: { bmkg_gempa: gempaData },
+        };
+
+        const { data: gData } = await adminClient.from('alerts').insert(gempaPayload).select().maybeSingle();
+        gempaAlertCreated = gData;
+      }
+    } catch (gErr) {
+      console.warn('Gagal sinkronisasi gempa pada cron peringatan:', gErr);
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Sinkronisasi peringatan cuaca BMKG selesai.',
+      message: 'Sinkronisasi peringatan cuaca & gempa BMKG selesai.',
       weather: bmkgData.weather,
       alert_dibuat: alertCreated,
+      gempa_alert_dibuat: gempaAlertCreated,
     });
   } catch (error) {
     console.error('API /api/cron/peringatan Error:', error);

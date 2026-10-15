@@ -40,10 +40,6 @@ export function LoginReminderOverlay({
         <div className="mt-6 space-y-2.5">
           <Link
             href="/login"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = "/login";
-            }}
             className="w-full py-3 px-4 rounded-[12px] bg-[#176B4D] hover:bg-[#104A35] text-white font-bold text-xs md:text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
@@ -52,10 +48,6 @@ export function LoginReminderOverlay({
 
           <Link
             href="/register"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = "/register";
-            }}
             className="w-full py-2.5 px-4 rounded-[12px] bg-[#F8FAF9] hover:bg-[#EFF3F0] text-[#176B4D] border border-[#CDD7D1] font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />

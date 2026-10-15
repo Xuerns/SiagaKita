@@ -2,13 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  Bell, 
-  MapPin, 
-  Users, 
-  Radio, 
-  Sparkles,
+import {
+  ShieldCheck,
+  ArrowLeft,
+  Bell,
+  MapPin,
+  Users,
+  Radio,
   CheckCircle2,
   Shield
 } from "lucide-react";
@@ -71,7 +71,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                 Lindungi Diri, Keluarga, dan Komunitas Terdekat.
               </h2>
               <p className="text-xs text-white/80 mt-2 leading-relaxed">
-                Platform terpadu mitigasi bencana, jalur evakuasi offline, dan koordinasi relawan dengan presisi data BMKG & InaRISK.
+                Platform terpadu mitigasi bencana, jalur evakuasi offline, dan kesiapsiagaan warga dengan presisi data BMKG & InaRISK.
               </p>
             </div>
           </div>
@@ -120,10 +120,10 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white">
-                    Jaringan Komunitas & Relawan
+                    Gotong Royong Warga Sekitar
                   </div>
                   <div className="text-[10px] text-white/70">
-                    Validasi laporan cepat untuk koordinasi bantuan tanggap darurat
+                    Konfirmasi laporan warga untuk respon cepat tanggap darurat
                   </div>
                 </div>
               </div>
@@ -183,7 +183,7 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
               <p className="text-xs sm:text-sm text-[#68756E] mt-1.5">
                 {mode === "login"
                   ? "Masuk untuk mengakses dasbor kesiapsiagaan dan notifikasi wilayah Anda."
-                  : "Bergabung bersama ribuan warga dan relawan untuk kesiapsiagaan bencana."}
+                  : "Bergabung bersama warga lainnya untuk kesiapsiagaan bencana bersama."}
               </p>
 
               {/* Mode Switcher Tabs */}

@@ -31,18 +31,22 @@ export async function PATCH(
       );
     }
 
-    // Periksa apakah pengguna memiliki hak akses Relawan atau Admin
     const adminClient = createAdminClient();
-    const { data: profile } = await adminClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+
+    // Periksa kepemilikan laporan: pengguna hanya dapat mengelola laporannya sendiri
+    const { data: report, error: reportErr } = await adminClient
+      .from('community_reports')
+      .select('id, user_id')
+      .eq('id', reportId)
       .maybeSingle();
 
-    const role = profile?.role || 'warga';
-    if (role !== 'relawan' && role !== 'admin') {
+    if (reportErr || !report) {
+      return NextResponse.json({ error: 'Laporan tidak ditemukan.' }, { status: 404 });
+    }
+
+    if (report.user_id !== user.id) {
       return NextResponse.json(
-        { error: 'Akses ditolak: Hanya Relawan atau Admin yang dapat memoderasi laporan.' },
+        { error: 'Akses ditolak: Anda hanya dapat mengelola laporan yang Anda buat sendiri.' },
         { status: 403 }
       );
     }

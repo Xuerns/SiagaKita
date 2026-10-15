@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { 
   User, 
   Mail, 
@@ -11,21 +11,23 @@ import {
   EyeOff, 
   MapPin, 
   ArrowRight, 
-  ShieldCheck, 
-  ShieldAlert, 
   AlertCircle, 
   CheckCircle2, 
   UserX,
-  Check
+  Check,
+  Search,
+  ChevronDown,
+  Crosshair,
+  Loader2,
+  X
 } from "lucide-react";
-import { INDONESIA_REGIONS } from "@/lib/bmkg";
+import { INDONESIA_REGIONS, findClosestBMKGRegion } from "@/lib/bmkg";
 
 interface RegisterFormProps {
   onSwitchToLogin?: () => void;
 }
 
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect") || "/";
 
@@ -33,8 +35,11 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"warga" | "relawan">("warga");
   const [location, setLocation] = useState("Kota Bandung");
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState(false);
+  const [regionSearchQuery, setRegionSearchQuery] = useState("");
+  const [isLocatingGPS, setIsLocatingGPS] = useState(false);
+  const [gpsFeedback, setGpsFeedback] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -42,9 +47,72 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const locations = useMemo(() => {
-    return INDONESIA_REGIONS.map((r) => r.name);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        locationDropdownRef.current &&
+        !locationDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLocationDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const selectedRegion = useMemo(() => {
+    return INDONESIA_REGIONS.find((r) => r.name === location) || null;
+  }, [location]);
+
+  const filteredRegions = useMemo(() => {
+    const q = regionSearchQuery.toLowerCase().trim();
+    if (!q) return INDONESIA_REGIONS;
+    return INDONESIA_REGIONS.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.province.toLowerCase().includes(q) ||
+        (r.group && r.group.toLowerCase().includes(q))
+    );
+  }, [regionSearchQuery]);
+
+  const handleDetectGPS = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!navigator.geolocation) {
+      setGpsFeedback("Browser Anda tidak mendukung deteksi lokasi (Geolocation).");
+      return;
+    }
+
+    setIsLocatingGPS(true);
+    setGpsFeedback(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const result = findClosestBMKGRegion(latitude, longitude);
+        setLocation(result.region.name);
+        setIsLocatingGPS(false);
+        setGpsFeedback(`Terdeteksi: ${result.region.name} (~${result.distanceKm} km)`);
+        setTimeout(() => {
+          setIsLocationDropdownOpen(false);
+          setGpsFeedback(null);
+        }, 900);
+      },
+      (error) => {
+        setIsLocatingGPS(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setGpsFeedback("Izin lokasi ditolak. Silakan cari wilayah secara manual.");
+        } else {
+          setGpsFeedback("Gagal mendeteksi lokasi GPS. Silakan ketik nama kota Anda.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Calculate password strength
   const calculateStrength = (pass: string) => {
@@ -95,7 +163,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           email,
           password,
           nama: name,
-          role,
+          role: "warga",
           location,
         }),
       });
@@ -190,60 +258,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
-        {/* Role Selector (PRD FR-AUTH-07) */}
-        <div>
-          <label className="block text-xs font-semibold text-[#17211D] mb-1.5">
-            Daftar Sebagai Peran
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setRole("warga")}
-              className={`p-2.5 rounded-[12px] border text-left flex items-start gap-2 transition-all cursor-pointer ${
-                role === "warga"
-                  ? "border-[#176B4D] bg-[#E5F5EA]/50 ring-1 ring-[#176B4D]"
-                  : "border-[#E6EBE8] bg-[#F8FAF9] hover:bg-white"
-              }`}
-            >
-              <div className={`p-1.5 rounded-[8px] mt-0.5 ${role === "warga" ? "bg-[#176B4D] text-white" : "bg-white text-[#68756E]"}`}>
-                <User className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#17211D] flex items-center gap-1">
-                  <span>Warga</span>
-                  {role === "warga" && <Check className="w-3 h-3 text-[#176B4D]" />}
-                </div>
-                <div className="text-[10px] text-[#68756E] leading-tight mt-0.5">
-                  Pantau peringatan & lapor bencana
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole("relawan")}
-              className={`p-2.5 rounded-[12px] border text-left flex items-start gap-2 transition-all cursor-pointer ${
-                role === "relawan"
-                  ? "border-[#176B4D] bg-[#E5F5EA]/50 ring-1 ring-[#176B4D]"
-                  : "border-[#E6EBE8] bg-[#F8FAF9] hover:bg-white"
-              }`}
-            >
-              <div className={`p-1.5 rounded-[8px] mt-0.5 ${role === "relawan" ? "bg-[#176B4D] text-white" : "bg-white text-[#68756E]"}`}>
-                <ShieldAlert className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#17211D] flex items-center gap-1">
-                  <span>Relawan Siaga</span>
-                  {role === "relawan" && <Check className="w-3 h-3 text-[#176B4D]" />}
-                </div>
-                <div className="text-[10px] text-[#68756E] leading-tight mt-0.5">
-                  Verifikasi data & posko tanggap
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         {/* Full Name */}
         <div>
           <label className="block text-xs font-semibold text-[#17211D] mb-1">
@@ -280,28 +294,158 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           </div>
         </div>
 
-        {/* Wilayah / Lokasi Domisili (PRD FR-AUTH-05) */}
-        <div>
-          <label className="block text-xs font-semibold text-[#17211D] mb-1">
-            Wilayah Domisili (Untuk Notifikasi Lokal)
-          </label>
-          <div className="relative">
-            <MapPin className="w-4 h-4 text-[#176B4D] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full pl-10 pr-8 py-2 bg-[#F8FAF9] rounded-[10px] text-xs md:text-sm text-[#17211D] border border-[#E6EBE8] focus:outline-none focus:border-[#176B4D] focus:bg-white focus:ring-2 focus:ring-[#E5F5EA] appearance-none cursor-pointer transition-all"
-            >
-              {locations.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#929D96] text-[10px]">
-              ▼
-            </div>
+        {/* Wilayah / Lokasi Domisili (Searchable Combobox) */}
+        <div ref={locationDropdownRef} className="relative">
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold text-[#17211D]">
+              Wilayah Domisili (Untuk Notifikasi Lokal)
+            </label>
+            <span className="text-[10px] text-[#68756E]">
+              {selectedRegion?.province || "Indonesia"}
+            </span>
           </div>
+
+          {/* Trigger button */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsLocationDropdownOpen(!isLocationDropdownOpen);
+              setRegionSearchQuery("");
+            }}
+            className={`w-full pl-10 pr-3.5 py-2 rounded-[10px] text-xs md:text-sm text-left border flex items-center justify-between transition-all cursor-pointer ${
+              isLocationDropdownOpen
+                ? "bg-white border-[#176B4D] ring-2 ring-[#E5F5EA]"
+                : "bg-[#F8FAF9] border-[#E6EBE8] hover:bg-[#F1F4F2]"
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-[#176B4D] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="flex items-center gap-2 truncate pr-2">
+              <span className="font-semibold text-[#17211D] truncate">
+                {location}
+              </span>
+              {selectedRegion?.province && (
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#E5F5EA] text-[#176B4D] shrink-0">
+                  {selectedRegion.province}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-[#929D96] shrink-0">
+              <span className="text-[10px] text-[#176B4D] font-medium hidden sm:inline">Cari / Ubah</span>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isLocationDropdownOpen ? "rotate-180 text-[#176B4D]" : ""}`} />
+            </div>
+          </button>
+
+          {/* Search Dropdown Popover */}
+          {isLocationDropdownOpen && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-[14px] border border-[#E6EBE8] shadow-[0_12px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden animate-fadeIn">
+              {/* Search Box Header */}
+              <div className="p-2.5 border-b border-[#F1F4F2] bg-[#F8FAF9] space-y-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#929D96] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={regionSearchQuery}
+                    onChange={(e) => setRegionSearchQuery(e.target.value)}
+                    placeholder="Ketik kota/kabupaten (mis. Bogor, Padang, Bandung)..."
+                    autoFocus
+                    className="w-full pl-9 pr-8 py-1.5 bg-white rounded-[8px] text-xs text-[#17211D] placeholder:text-[#929D96] border border-[#E6EBE8] focus:outline-none focus:border-[#176B4D] focus:ring-1 focus:ring-[#176B4D]"
+                  />
+                  {regionSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setRegionSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#929D96] hover:text-[#17211D]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick GPS Action */}
+                <button
+                  type="button"
+                  onClick={handleDetectGPS}
+                  disabled={isLocatingGPS}
+                  className="w-full py-1.5 px-2.5 rounded-[8px] bg-white hover:bg-[#E5F5EA] text-[#176B4D] border border-[#CDD7D1] hover:border-[#176B4D] text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {isLocatingGPS ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Mendeteksi GPS terdekat...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Crosshair className="w-3.5 h-3.5" />
+                      <span>Deteksi Lokasi GPS Otomatis</span>
+                    </>
+                  )}
+                </button>
+
+                {/* GPS Feedback message */}
+                {gpsFeedback && (
+                  <div className="px-2 py-1 rounded-[6px] bg-[#E5F5EA] text-[#176B4D] text-[10px] font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 shrink-0" />
+                    <span>{gpsFeedback}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Regions List */}
+              <div className="max-h-52 overflow-y-auto divide-y divide-[#F8FAF9]">
+                {filteredRegions.length > 0 ? (
+                  filteredRegions.map((r) => {
+                    const isSelected = r.name === location;
+                    return (
+                      <button
+                        key={r.adm4 || r.name}
+                        type="button"
+                        onClick={() => {
+                          setLocation(r.name);
+                          setIsLocationDropdownOpen(false);
+                          setRegionSearchQuery("");
+                        }}
+                        className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-colors cursor-pointer ${
+                          isSelected
+                            ? "bg-[#E5F5EA] text-[#176B4D] font-bold"
+                            : "hover:bg-[#F8FAF9] text-[#17211D]"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={isSelected ? "font-bold text-[#176B4D]" : "font-medium"}>
+                              {r.name}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[9px] bg-[#176B4D] text-white px-1.5 py-0.2 rounded font-semibold">
+                                Terpilih
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-[#68756E] block mt-0.5">
+                            {r.province} {r.group ? `• ${r.group}` : ""}
+                          </span>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-[#176B4D] shrink-0" />}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="py-6 px-4 text-center">
+                    <p className="text-xs font-semibold text-[#17211D]">Wilayah tidak ditemukan</p>
+                    <p className="text-[10px] text-[#68756E] mt-0.5">
+                      Coba cari dengan kata kunci nama kabupaten atau provinsi lainnya.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer info */}
+              <div className="px-3 py-1.5 bg-[#F8FAF9] border-t border-[#F1F4F2] text-[10px] text-[#929D96] flex items-center justify-between">
+                <span>Total {filteredRegions.length} wilayah BMKG</span>
+                <span>Klik untuk memilih</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Password */}

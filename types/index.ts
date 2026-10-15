@@ -28,6 +28,8 @@ export type RiskLevel = 'Aman' | 'Waspada' | 'Siaga' | 'Awas' | 'aman' | 'waspad
 export type SourceType = 'BMKG' | 'InaRISK' | 'Open-Meteo' | 'PVMBG' | 'Simulasi' | 'Laporan Warga';
 export type VerificationStatus = 'Terverifikasi' | 'Dalam Verifikasi' | 'Belum Terverifikasi' | 'Ditolak' | 'terverifikasi' | 'belum_terverifikasi' | 'disembunyikan';
 
+export type { EarthquakeData, RecentEarthquakeItem } from '@/lib/gempa';
+
 export interface WeatherCurrent {
   temp: number;
   condition: string;

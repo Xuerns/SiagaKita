@@ -9,7 +9,7 @@ export type HazardType =
 
 export type RiskLevel = 'aman' | 'waspada' | 'siaga' | 'awas';
 
-export type UserRole = 'warga' | 'relawan' | 'admin';
+export type UserRole = 'warga';
 
 export type ReportStatus =
   | 'belum_terverifikasi'

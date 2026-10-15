@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type') || '';
     let fileBuffer: Buffer | null = null;
     let mimeType: string = '';
-    let originalName: string = 'photo';
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
@@ -66,7 +65,6 @@ export async function POST(request: NextRequest) {
       }
 
       mimeType = file.type.toLowerCase();
-      originalName = file.name || 'photo.webp';
 
       if (!ALLOWED_IMAGE_MIME_TYPES.includes(mimeType)) {
         return NextResponse.json(
@@ -109,7 +107,6 @@ export async function POST(request: NextRequest) {
       }
 
       mimeType = validation.mimeType || 'image/webp';
-      originalName = body.fileName || 'photo.webp';
 
       const base64Data = body.file.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
       fileBuffer = Buffer.from(base64Data, 'base64');

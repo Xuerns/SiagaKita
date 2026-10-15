@@ -37,14 +37,40 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
 
+    // Jika terjadi error, cek apakah pengguna sudah terdaftar tetapi belum dikonfirmasi emailnya
     if (error) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const adminClient = createAdminClient();
+        if (typeof adminClient?.auth?.admin?.listUsers === 'function') {
+          const { data: usersData } = await adminClient.auth.admin.listUsers();
+          const existingUser = usersData?.users.find((u) => u.email?.toLowerCase() === cleanEmail);
+
+          if (existingUser && !existingUser.email_confirmed_at && typeof adminClient.auth.admin.updateUserById === 'function') {
+            await adminClient.auth.admin.updateUserById(existingUser.id, { email_confirm: true });
+            const retry = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password,
+            });
+            if (!retry.error && retry.data) {
+              data = retry.data;
+              error = null;
+            }
+          }
+        }
+      } catch (adminErr) {
+        console.warn('Gagal memverifikasi status email admin:', adminErr);
+      }
+    }
+
+    if (error || !data?.user) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error?.message || 'Invalid login credentials' },
         { status: 401 }
       );
     }
