@@ -4,6 +4,7 @@ import React, { useContext } from "react";
 import {
   Home,
   Map,
+  AlertTriangle,
   FileText,
   ShieldAlert,
 } from "lucide-react";
@@ -34,7 +35,6 @@ export type NavTab =
   | "peringatan"
   | "laporan"
   | "mitigasi"
-  | "komunitas"
   | "pengaturan"
   | "tokens";
 
@@ -54,11 +54,14 @@ const labelHide = "group-data-[collapsible=icon]:hidden";
 function InnerDesktopSidebar({
   currentTab,
   onSelectTab,
+  warningCount = 1,
   className,
 }: DesktopSidebarProps) {
-  const navItems: Array<{ id: NavTab; label: string; icon: any; badge?: number }> = [
+
+  const navItems = [
     { id: "beranda", label: "Beranda", icon: Home },
     { id: "peta", label: "Peta Evakuasi", icon: Map },
+    { id: "peringatan", label: "Peringatan Dini", icon: AlertTriangle, badge: warningCount },
     { id: "laporan", label: "Laporan Warga", icon: FileText },
     { id: "mitigasi", label: "Mitigasi", icon: ShieldAlert },
   ];
