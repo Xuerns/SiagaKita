@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Mail, 
   Lock, 
@@ -14,6 +14,7 @@ import {
   AlertCircle,
   CheckCircle2
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void;
@@ -21,6 +22,10 @@ interface LoginFormProps {
 
 export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
+  const errorParam = searchParams.get("error");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -31,6 +36,12 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+
+  useEffect(() => {
+    if (errorParam === "oauth_failed") {
+      setErrorMsg("Autentikasi Google dibatalkan atau gagal. Silakan coba kembali.");
+    }
+  }, [errorParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,34 +55,83 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
     setIsLoading(true);
 
-    // Simulate authentication flow for front-end demonstration
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal masuk. Periksa kembali email dan kata sandi Anda.");
+        setIsLoading(false);
+        return;
+      }
+
       setSuccessMsg("Berhasil masuk! Mengarahkan ke dashboard...");
       setTimeout(() => {
-        router.push("/");
-      }, 1000);
-    }, 1200);
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat proses masuk.");
+      setIsLoading(false);
+    }
   };
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push("/?mode=guest");
-    }, 600);
-  };
+    setErrorMsg("");
+    setSuccessMsg("");
 
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMsg("Menghubungkan akun Google...");
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal masuk sebagai tamu.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMsg("Masuk sebagai Tamu berhasil! Mengarahkan...");
       setTimeout(() => {
-        router.push("/");
-      }, 900);
-    }, 800);
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat masuk sebagai tamu.");
+      setIsLoading(false);
+    }
   };
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    setErrorMsg("");
+    setSuccessMsg("Menghubungkan ke Google...");
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectParam)}`,
+        },
+      });
+
+      if (error) {
+        setErrorMsg(error.message);
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMsg("Gagal menginisialisasi login Google.");
+      setIsLoading(false);
+    }
+  };
+
 
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();

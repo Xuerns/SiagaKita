@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   User, 
   Mail, 
@@ -26,6 +26,9 @@ interface RegisterFormProps {
 
 export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,34 +87,90 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
     setIsLoading(true);
 
-    // Simulate registration flow
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMsg("Pendaftaran berhasil! Akun Anda telah siap.");
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          nama: name,
+          role,
+          region_id: location,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Pendaftaran gagal. Silakan periksa kembali data Anda.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMsg("Pendaftaran berhasil! Mengarahkan ke dashboard...");
       setTimeout(() => {
-        router.push("/");
-      }, 1200);
-    }, 1500);
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat proses pendaftaran.");
+      setIsLoading(false);
+    }
   };
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Gagal masuk sebagai tamu.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMsg("Masuk sebagai Tamu berhasil! Mengarahkan...");
+      setTimeout(() => {
+        window.location.href = redirectParam;
+      }, 400);
+    } catch {
+      setErrorMsg("Terjadi kesalahan jaringan saat masuk sebagai tamu.");
       setIsLoading(false);
-      router.push("/?mode=guest");
-    }, 600);
+    }
   };
 
-  const handleGoogleSignup = () => {
+  const handleGoogleSignup = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    setErrorMsg("");
+    setSuccessMsg("Menghubungkan akun Google...");
+
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectParam)}`,
+        },
+      });
+
+      if (error) {
+        setErrorMsg(error.message);
+        setIsLoading(false);
+      }
+    } catch {
+      setErrorMsg("Gagal menginisialisasi pendaftaran Google.");
       setIsLoading(false);
-      setSuccessMsg("Menghubungkan akun Google...");
-      setTimeout(() => {
-        router.push("/");
-      }, 900);
-    }, 800);
+    }
   };
+
 
   return (
     <div className="w-full">

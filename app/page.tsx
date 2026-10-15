@@ -9,6 +9,7 @@ import {
   NavTab 
 } from "@/components/layout/DesktopSidebar";
 import { DesktopTopbar } from "@/components/layout/DesktopTopbar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { WeatherCard } from "@/components/dashboard/WeatherCard";
 import { RiskStatusCard } from "@/components/dashboard/RiskStatusCard";
 import { WarningCard } from "@/components/dashboard/WarningCard";
@@ -44,9 +45,18 @@ import {
   mockCommunityReports 
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning } from "@/types";
-import { DownloadCloud, Layers } from "lucide-react";
+import { DownloadCloud, Layers, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function SiagaKitaApp() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  // Client-side authentication guard: redirect to /login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      window.location.replace("/login");
+    }
+  }, [isLoading, isAuthenticated]);
   // Navigation & Viewport State
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [currentTab, setCurrentTab] = useState<NavTab>("beranda");
@@ -275,6 +285,31 @@ export default function SiagaKitaApp() {
     setCommunityReports([created, ...communityReports]);
   };
 
+  // Loading Screen while verifying session
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F5F7F6] flex flex-col items-center justify-center p-4 select-none">
+        <div className="w-16 h-16 rounded-[20px] bg-[#176B4D] flex items-center justify-center text-white shadow-xl shadow-[#176B4D]/25 animate-bounce mb-5">
+          <ShieldCheck className="w-9 h-9 text-emerald-300" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-2xl font-extrabold tracking-tight text-[#17211D]">
+            Siaga<span className="text-[#176B4D]">Kita</span>
+          </h1>
+          <p className="text-xs text-[#68756E] mt-2 flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#176B4D] animate-ping" />
+            <span>Memeriksa status sesi pengguna...</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, prevent rendering dashboard while redirecting to /login
+  if (!isAuthenticated) {
+    return null;
+  }
+
   // If Fullscreen Emergency Warning is triggered
   if (showEmergencyFullscreen) {
     return (
@@ -441,8 +476,12 @@ export default function SiagaKitaApp() {
 
       {/* VIEWPORT MODE: DESKTOP APPLICATION SHELL (1440 × 1024 px standard) */}
       {viewportMode === "desktop" && (
-        <div className="flex min-h-screen">
-          {/* Desktop Left Sidebar */}
+        <SidebarProvider
+          defaultOpen={true}
+          style={{ "--sidebar-width": "15rem", "--sidebar-width-icon": "4rem" } as React.CSSProperties}
+        >
+          <div className="flex min-h-screen w-full">
+            {/* Desktop Left Sidebar */}
           <DesktopSidebar
             currentTab={currentTab}
             onSelectTab={(tab) => {
@@ -469,7 +508,6 @@ export default function SiagaKitaApp() {
               isOnline={isOnline}
               onToggleOnline={() => setIsOnline(!isOnline)}
               onOpenNotifications={() => setShowPushNotification(true)}
-              onOpenProfile={() => setCurrentTab("pengaturan")}
             />
 
             {/* Main Page Body */}
@@ -481,7 +519,7 @@ export default function SiagaKitaApp() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h1 className="text-2xl font-bold tracking-tight text-[#17211D]">
-                        Halo, Adam 👋
+                        Halo, {user?.nama || "Warga Siaga"} 👋
                       </h1>
                       <p className="text-xs md:text-sm text-[#68756E] mt-1">
                         Pantau kondisi cuaca dan risiko bencana di wilayahmu agar selalu siap.
@@ -712,6 +750,7 @@ export default function SiagaKitaApp() {
             </main>
           </div>
         </div>
+      </SidebarProvider>
       )}
 
       {/* Modals & Overlays */}
