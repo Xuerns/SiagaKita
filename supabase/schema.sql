@@ -295,3 +295,29 @@ values
   array['Tenda Darurat', 'Pengeras Suara'],
   '11111111-1111-1111-1111-111111111111'
 ) on conflict do nothing;
+
+-- 14. KONFIGURASI SUPABASE STORAGE (S3 OBJECT STORAGE) UNTUK FOTO LAPORAN
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'report-photos',
+  'report-photos',
+  true,
+  5242880, -- 5 MB
+  array['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+) on conflict (id) do update set
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = array['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+-- Kebijakan akses publik untuk melihat foto laporan
+drop policy if exists "Akses Publik Lihat Foto Laporan" on storage.objects;
+create policy "Akses Publik Lihat Foto Laporan"
+on storage.objects for select
+using (bucket_id = 'report-photos');
+
+-- Kebijakan pengguna terautentikasi dapat mengunggah foto
+drop policy if exists "Pengguna Terautentikasi Upload Foto Laporan" on storage.objects;
+create policy "Pengguna Terautentikasi Upload Foto Laporan"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'report-photos');

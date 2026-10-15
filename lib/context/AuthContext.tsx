@@ -36,6 +36,7 @@ export interface AuthContextType {
   isLoading: boolean;
   refreshAuth: () => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -46,6 +47,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   refreshAuth: async () => {},
   logout: async () => {},
+  deleteAccount: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -113,6 +115,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const deleteAccount = useCallback(async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/auth/delete-account", {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setUser(null);
+        setProfile(null);
+        setIsAuthenticated(false);
+        setIsGuest(false);
+        window.location.href = "/";
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Gagal menghapus akun:", err);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     refreshAuth();
   }, [refreshAuth]);
@@ -127,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         refreshAuth,
         logout,
+        deleteAccount,
       }}
     >
       {children}

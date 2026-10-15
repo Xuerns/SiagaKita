@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronsUpDown, LogIn, LogOut, Settings, ShieldAlert, UserCheck } from "lucide-react";
+import { ChevronsUpDown, LogOut, Settings, ShieldAlert, UserCheck } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -111,19 +111,8 @@ export function SidebarUserMenu({ onOpenSettings }: SidebarUserMenuProps) {
               className="flex w-full cursor-pointer items-center gap-2 px-3.5 py-2 text-left text-xs text-[#17211D] transition-colors hover:bg-[#F8FAF9]"
             >
               <Settings className="size-3.5 text-[#68756E]" />
-              Pengaturan
+              Pengaturan & Profil
             </button>
-
-            {isGuest && (
-              <a
-                role="menuitem"
-                href="/login"
-                className="flex w-full cursor-pointer items-center gap-2 px-3.5 py-2 text-left text-xs font-semibold text-[#176B4D] transition-colors hover:bg-[#E5F5EA]"
-              >
-                <LogIn className="size-3.5" />
-                Daftar / Masuk Akun Tetap
-              </a>
-            )}
 
             <button
               role="menuitem"
@@ -131,7 +120,7 @@ export function SidebarUserMenu({ onOpenSettings }: SidebarUserMenuProps) {
                 setOpen(false);
                 logout();
               }}
-              className="flex w-full cursor-pointer items-center gap-2 px-3.5 py-2 text-left text-xs text-[#D64545] transition-colors hover:bg-[#FDECEC]"
+              className="flex w-full cursor-pointer items-center gap-2 px-3.5 py-2 text-left text-xs text-[#68756E] transition-colors hover:bg-[#F8FAF9]"
             >
               <LogOut className="size-3.5" />
               Keluar

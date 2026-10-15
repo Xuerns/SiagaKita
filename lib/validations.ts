@@ -11,7 +11,8 @@ export const registerSchema = z.object({
   password: z.string().min(8, 'Kata sandi minimal 8 karakter'),
   nama: z.string().min(2, 'Nama minimal 2 karakter').max(100, 'Nama maksimal 100 karakter'),
   role: z.enum(['warga', 'relawan']).default('warga'),
-  region_id: z.string().uuid().optional().nullable(),
+  region_id: z.string().optional().nullable(),
+  location: z.string().max(100).optional().nullable(),
   phone: z.string().optional().nullable(),
 });
 

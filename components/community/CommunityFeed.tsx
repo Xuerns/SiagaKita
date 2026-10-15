@@ -9,7 +9,9 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Filter,
-  RefreshCw 
+  RefreshCw,
+  ImageIcon,
+  X
 } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { VerificationBadge } from "../ui/Badge";
@@ -34,6 +36,7 @@ export function CommunityFeed({
 }: CommunityFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [activePhotoModal, setActivePhotoModal] = useState<string | null>(null);
 
   const categories = [
     "Semua",
@@ -136,6 +139,30 @@ export function CommunityFeed({
                 {report.description}
               </p>
 
+              {/* Foto Lapangan Terlampir */}
+              {report.foto_urls && report.foto_urls.length > 0 && (
+                <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {report.foto_urls.map((photoUrl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActivePhotoModal(photoUrl)}
+                      className="relative rounded-[10px] overflow-hidden border border-[#CDD7D1] w-20 h-20 shrink-0 bg-[#F8FAF9] hover:opacity-90 transition-all cursor-pointer group shadow-2xs"
+                      title="Klik untuk memperbesar foto"
+                    >
+                      <img
+                        src={photoUrl}
+                        alt={`Foto laporan ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <ImageIcon className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-center gap-4 text-[11px] text-[#929D96] mt-3">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-[#176B4D]" />
@@ -196,6 +223,40 @@ export function CommunityFeed({
           </div>
         )}
       </div>
+
+      {/* Lightbox Modal Foto Lapangan */}
+      {activePhotoModal && (
+        <div
+          onClick={() => setActivePhotoModal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full bg-[#17211D] rounded-[16px] overflow-hidden shadow-2xl border border-white/10"
+          >
+            <div className="flex items-center justify-between p-3 bg-black/40 text-white">
+              <span className="text-xs font-semibold flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-[#4ADE80]" />
+                Foto Dokumentasi Lapangan
+              </span>
+              <button
+                type="button"
+                onClick={() => setActivePhotoModal(null)}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-2 flex items-center justify-center bg-black/50 max-h-[75vh] overflow-hidden">
+              <img
+                src={activePhotoModal}
+                alt="Foto Laporan Lapangan Full"
+                className="max-h-[70vh] w-auto max-w-full object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
