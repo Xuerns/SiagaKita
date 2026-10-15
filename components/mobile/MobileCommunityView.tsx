@@ -118,11 +118,17 @@ export function MobileCommunityView({
             <div className="pt-2 border-t border-[#F1F4F2] flex items-center justify-between text-[11px] pl-10">
               <span className="text-[#929D96]">Oleh: {rep.userName}</span>
               <button
-                onClick={() => onConfirmReport(rep.id)}
-                className="text-[10px] font-semibold text-[#176B4D] bg-[#F8FAF9] px-2.5 py-1 rounded-full border border-[#E6EBE8] flex items-center gap-1"
+                onClick={() => !rep.userConfirmed && onConfirmReport(rep.id)}
+                disabled={rep.userConfirmed}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors ${
+                  rep.userConfirmed
+                    ? "bg-[#E5F5EA] text-[#176B4D] border-[#CDD7D1] cursor-default opacity-95"
+                    : "text-[#176B4D] bg-[#F8FAF9] border-[#E6EBE8] hover:bg-[#EFF5F1] cursor-pointer active:scale-95"
+                }`}
+                title={rep.userConfirmed ? "Sudah dikonfirmasi" : "Konfirmasi laporan ini"}
               >
-                <ThumbsUp className="w-3 h-3" />
-                <span>{rep.confirmationsCount} Konfirmasi</span>
+                <ThumbsUp className={`w-3 h-3 ${rep.userConfirmed ? "fill-[#176B4D]" : ""}`} />
+                <span>{rep.confirmationsCount} {rep.userConfirmed ? "Dikonfirmasi" : "Konfirmasi"}</span>
               </button>
             </div>
           </div>

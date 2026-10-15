@@ -101,6 +101,23 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Ambil data konfirmasi pengguna saat ini jika terautentikasi
+        let userConfirmedSet = new Set<string>();
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: userVotes } = await supabase
+              .from('report_confirmations')
+              .select('report_id')
+              .eq('user_id', user.id);
+            if (userVotes) {
+              userConfirmedSet = new Set(userVotes.map((v) => v.report_id));
+            }
+          }
+        } catch {
+          // Abaikan jika auth error
+        }
+
         reports = dbReports.map((r) => {
           // Ambil koordinat nyata dari geom PostGIS, lalu diburamkan ~100m sesuai mandat privasi UU PDP (PRD 14.2)
           const coords = parseGeom(r.geom);
@@ -137,6 +154,7 @@ export async function GET(request: NextRequest) {
             lat: repLat,
             lng: repLng,
             jarak_km: distanceKm,
+            userConfirmed: userConfirmedSet.has(r.id),
           };
         });
 

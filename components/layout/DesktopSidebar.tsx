@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   FileText,
   ShieldAlert,
-  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,7 +35,6 @@ export type NavTab =
   | "peringatan"
   | "laporan"
   | "mitigasi"
-  | "komunitas"
   | "pengaturan"
   | "tokens";
 
@@ -66,7 +64,6 @@ function InnerDesktopSidebar({
     { id: "peringatan", label: "Peringatan Dini", icon: AlertTriangle, badge: warningCount },
     { id: "laporan", label: "Laporan Warga", icon: FileText },
     { id: "mitigasi", label: "Mitigasi", icon: ShieldAlert },
-    { id: "komunitas", label: "Komunitas", icon: Users },
   ];
 
   const stateClass = (active: boolean) =>

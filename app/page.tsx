@@ -37,6 +37,8 @@ import { DesignSystemViewer } from "@/components/preview/DesignSystemViewer";
 import { SayaAmanModal } from "@/components/ui/SayaAmanModal";
 import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
+import { useAuth } from "@/lib/context/AuthContext";
+import { LoginReminderOverlay } from "@/components/auth/LoginReminderOverlay";
 import { 
   mockCurrentWeather, 
   mockForecast5Days, 
@@ -60,6 +62,10 @@ import {
 import { useAuth } from "@/lib/context/AuthContext";
 
 export default function SiagaKitaApp() {
+  // Auth State
+  const { user, isAuthenticated, isGuest, isLoading: isAuthLoading } = useAuth();
+  const isGuestMode = !isAuthLoading && (!isAuthenticated || isGuest);
+
   // Navigation & Viewport State
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
   const [currentTab, setCurrentTab] = useState<NavTab>("beranda");
@@ -127,6 +133,11 @@ export default function SiagaKitaApp() {
       if (!res.ok) return;
       const json = await res.json();
       if (Array.isArray(json.reports)) {
+        let storedLikes: string[] = [];
+        try {
+          storedLikes = JSON.parse(localStorage.getItem("siagakita_confirmed_reports") || "[]");
+        } catch {}
+
         const mappedReports: CommunityReport[] = json.reports.map((r: any) => ({
           id: r.id,
           userName: r.userName || r.user_name || "Warga Siaga",
@@ -148,7 +159,7 @@ export default function SiagaKitaApp() {
           foto_urls: r.foto_urls || [],
           lat: r.lat,
           lng: r.lng,
-          userConfirmed: false,
+          userConfirmed: Boolean(r.userConfirmed || (r.id && storedLikes.includes(r.id))),
         }));
         setCommunityReports(mappedReports);
       }
@@ -310,32 +321,60 @@ export default function SiagaKitaApp() {
   };
 
   const handleConfirmReport = async (reportId: string) => {
+    // 1. Cek apakah laporan sudah pernah dikonfirmasi (like hanya 1 kali, tidak bisa dislike)
+    const target = communityReports.find((r) => r.id === reportId);
+    if (!target || target.userConfirmed) {
+      return;
+    }
+
+    // 2. Tandai secara optimis: userConfirmed = true, konfirmasi bertambah 1
     setCommunityReports((prev) =>
       prev.map((rep) =>
         rep.id === reportId
           ? {
               ...rep,
-              confirmationsCount: rep.userConfirmed
-                ? Math.max((rep.confirmationsCount ?? 1) - 1, 0)
-                : (rep.confirmationsCount ?? 0) + 1,
-              userConfirmed: !rep.userConfirmed,
+              confirmationsCount: (rep.confirmationsCount ?? 0) + 1,
+              userConfirmed: true,
             }
           : rep
       )
     );
 
-    // Hanya panggil API jika ID adalah UUID asli dari database (bukan ID optimistic lokal)
-    const isRealUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reportId);
-    if (!isRealUUID) return;
-
+    // 3. Simpan ke localStorage agar tidak dapat di-like ulang di perangkat ini
     try {
-      await fetch(`/api/laporan/${encodeURIComponent(reportId)}/konfirmasi`, {
+      const stored = JSON.parse(localStorage.getItem("siagakita_confirmed_reports") || "[]");
+      if (!stored.includes(reportId)) {
+        localStorage.setItem("siagakita_confirmed_reports", JSON.stringify([...stored, reportId]));
+      }
+    } catch {}
+
+    // 4. Panggil database API hanya 1 kali per like
+    try {
+      const res = await fetch(`/api/laporan/${encodeURIComponent(reportId)}/konfirmasi`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vote: 1 }),
       });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (typeof json.konfirmasi_count === "number") {
+          setCommunityReports((prev) =>
+            prev.map((rep) =>
+              rep.id === reportId
+                ? {
+                    ...rep,
+                    confirmationsCount: json.konfirmasi_count,
+                    status: json.status === "terverifikasi" ? "Terverifikasi" : rep.status,
+                    userConfirmed: true,
+                  }
+                : rep
+            )
+          );
+        }
+      }
     } catch (err) {
-      console.warn("Gagal mengirim konfirmasi laporan ke API:", err);
+      console.warn("Gagal mengirim konfirmasi laporan ke API database:", err);
     }
   };
 
@@ -500,14 +539,33 @@ export default function SiagaKitaApp() {
                   point={selectedPoint}
                   onBack={() => setMobileTab("beranda")}
                 />
-              ) : mobileTab === "komunitas" ? (
-                <MobileCommunityView
-                  reports={communityReports}
-                  onOpenCreateModal={() => setShowCreateReportModal(true)}
-                  onConfirmReport={handleConfirmReport}
-                  onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                  isRefreshing={isRefreshingReports}
-                />
+              ) : mobileTab === "laporan" ? (
+                <div className="relative min-h-[520px]">
+                  <div
+                    className={
+                      isGuestMode
+                        ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
+                        : ""
+                    }
+                  >
+                    <MobileCommunityView
+                      reports={communityReports}
+                      onOpenCreateModal={() => {
+                        if (isGuestMode) return;
+                        setShowCreateReportModal(true);
+                      }}
+                      onConfirmReport={handleConfirmReport}
+                      onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                      isRefreshing={isRefreshingReports}
+                    />
+                  </div>
+
+                  {isGuestMode && (
+                    <LoginReminderOverlay
+                      onBackToHome={() => setMobileTab("beranda")}
+                    />
+                  )}
+                </div>
               ) : mobileTab === "mitigasi" ? (
                 <MobileMitigationView />
               ) : (
@@ -738,29 +796,48 @@ export default function SiagaKitaApp() {
                 </div>
               )}
 
-              {/* SCREEN D: KOMUNITAS / LAPORAN WARGA */}
-              {(currentTab === "laporan" || currentTab === "komunitas") && (
-                <div className="space-y-4">
-                  <div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                      Forum Kondisi Lokal
-                    </h1>
-                    <p className="text-xs text-[#68756E] mt-0.5">
-                      Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
-                    </p>
+              {/* SCREEN D: LAPORAN WARGA */}
+              {currentTab === "laporan" && (
+                <div className="relative min-h-[520px]">
+                  <div
+                    className={
+                      isGuestMode
+                        ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
+                        : ""
+                    }
+                  >
+                    <div className="space-y-4">
+                      <div>
+                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
+                          Forum Kondisi Lokal
+                        </h1>
+                        <p className="text-xs text-[#68756E] mt-0.5">
+                          Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
+                        </p>
+                      </div>
+
+                      <CommunityFeed
+                        reports={communityReports}
+                        onOpenCreateModal={() => {
+                          if (isGuestMode) return;
+                          setShowCreateReportModal(true);
+                        }}
+                        onNavigateToMap={(rep) => {
+                          setCurrentTab("peta");
+                          setMapLayerTab("laporan");
+                        }}
+                        onConfirmReport={handleConfirmReport}
+                        onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                        isRefreshing={isRefreshingReports}
+                      />
+                    </div>
                   </div>
 
-                  <CommunityFeed
-                    reports={communityReports}
-                    onOpenCreateModal={() => setShowCreateReportModal(true)}
-                    onNavigateToMap={(rep) => {
-                      setCurrentTab("peta");
-                      setMapLayerTab("laporan");
-                    }}
-                    onConfirmReport={handleConfirmReport}
-                    onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                    isRefreshing={isRefreshingReports}
-                  />
+                  {isGuestMode && (
+                    <LoginReminderOverlay
+                      onBackToHome={() => setCurrentTab("beranda")}
+                    />
+                  )}
                 </div>
               )}
 

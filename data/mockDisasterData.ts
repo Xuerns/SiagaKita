@@ -14,13 +14,38 @@ export const mockCurrentWeather: WeatherCurrent = {
   },
 };
 
-export const mockForecast5Days: ForecastDay[] = [
-  { id: "1", dayName: "Hari ini", dateStr: "14 Okt", condition: "Hujan Ringan", tempMin: 22, tempMax: 28, rainChance: 85 },
-  { id: "2", dayName: "Sel", dateStr: "15 Okt", condition: "Cerah Berawan", tempMin: 21, tempMax: 27, rainChance: 40 },
-  { id: "3", dayName: "Rab", dateStr: "16 Okt", condition: "Berawan", tempMin: 20, tempMax: 26, rainChance: 30 },
-  { id: "4", dayName: "Kam", dateStr: "17 Okt", condition: "Hujan Sedang", tempMin: 19, tempMax: 26, rainChance: 70 },
-  { id: "5", dayName: "Jum", dateStr: "18 Okt", condition: "Cerah", tempMin: 20, tempMax: 27, rainChance: 20 },
-];
+const INDONESIA_DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const INDONESIA_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+
+export function getDynamicForecast5Days(baseDate: Date = new Date()): ForecastDay[] {
+  const sampleConditions = [
+    { condition: "Hujan Ringan", min: 22, max: 28, rainChance: 75 },
+    { condition: "Cerah Berawan", min: 21, max: 31, rainChance: 25 },
+    { condition: "Berawan", min: 20, max: 29, rainChance: 35 },
+    { condition: "Hujan Sedang", min: 19, max: 27, rainChance: 80 },
+    { condition: "Cerah", min: 20, max: 32, rainChance: 15 },
+  ];
+
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() + i);
+    const dayName = i === 0 ? "Hari ini" : INDONESIA_DAYS[d.getDay()];
+    const dateStr = `${d.getDate()} ${INDONESIA_MONTHS[d.getMonth()]}`;
+    const sample = sampleConditions[i % sampleConditions.length];
+
+    return {
+      id: `forecast-${i + 1}`,
+      dayName,
+      dateStr,
+      condition: sample.condition,
+      tempMin: sample.min,
+      tempMax: sample.max,
+      rainChance: sample.rainChance,
+    };
+  });
+}
+
+export const mockForecast5Days: ForecastDay[] = getDynamicForecast5Days();
 
 export const mockActiveWarning: ActiveWarning = {
   id: "warn-01",
