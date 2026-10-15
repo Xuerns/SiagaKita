@@ -96,6 +96,25 @@ export function MobileCommunityView({
               {rep.description}
             </p>
 
+            {/* Foto Lapangan Terlampir (Mobile) */}
+            {rep.foto_urls && rep.foto_urls.length > 0 && (
+              <div className="pl-10 flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {rep.foto_urls.map((photoUrl, idx) => (
+                  <div
+                    key={idx}
+                    className="relative rounded-[8px] overflow-hidden border border-[#CDD7D1] w-16 h-16 shrink-0 bg-[#F8FAF9] shadow-2xs"
+                  >
+                    <img
+                      src={photoUrl}
+                      alt={`Foto laporan ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="pt-2 border-t border-[#F1F4F2] flex items-center justify-between text-[11px] pl-10">
               <span className="text-[#929D96]">Oleh: {rep.userName}</span>
               <button

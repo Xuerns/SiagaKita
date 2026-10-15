@@ -33,9 +33,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, nama, role, region_id } = parseResult.data;
+    const { email, password, nama, role, region_id, location } = parseResult.data;
     const cleanEmail = email.trim().toLowerCase();
     const cleanNama = sanitizeText(nama, 100);
+
+    // Validasi apakah region_id adalah format UUID valid untuk kolom Postgres profiles.region_id
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUuid = region_id && UUID_REGEX.test(region_id.trim());
+    const validRegionId = isValidUuid ? region_id.trim() : null;
+
+    // Jika region_id bukan UUID (misal nama kota "Kota Bandung"), gunakan sebagai nama lokasi
+    const detectedLocation = location || (!isValidUuid && region_id ? region_id.trim() : undefined);
 
     const supabase = await createClient();
 
@@ -46,6 +54,7 @@ export async function POST(request: NextRequest) {
         data: {
           full_name: cleanNama,
           role: role,
+          wilayah: detectedLocation,
         },
       },
     });
@@ -72,7 +81,7 @@ export async function POST(request: NextRequest) {
           id: data.user.id,
           nama: cleanNama,
           role: role,
-          region_id: region_id || null,
+          region_id: validRegionId,
         },
         { onConflict: 'id' }
       );
