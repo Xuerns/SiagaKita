@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -13,7 +14,19 @@ export const metadata: Metadata = {
   description: "Platform PWA kesiapsiagaan bencana hiperlokal, peta evakuasi offline, dan laporan warga terverifikasi.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SiagaKita",
   },
 };
 
@@ -40,6 +53,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <ServiceWorkerRegister />
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>

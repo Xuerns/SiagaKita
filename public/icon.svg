@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F3822" />
+      <stop offset="50%" stop-color="#176B4D" />
+      <stop offset="100%" stop-color="#25845F" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E5F5EA" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Inner Subtle Ring -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="4" />
+
+  <!-- Shield Shape -->
+  <g filter="url(#shadow)">
+    <!-- Shield Outline / Body -->
+    <path
+      d="M256 96 
+         C320 96 384 120 384 120 
+         V252 
+         C384 340 320 400 256 424 
+         C192 400 128 340 128 252 
+         V120 
+         C128 120 192 96 256 96 Z"
+      fill="url(#shieldGrad)"
+    />
+
+    <!-- Shield Inner Contrast Accent -->
+    <path
+      d="M256 120 
+         C304 120 356 138 356 138 
+         V248 
+         C356 322 304 374 256 396 
+         V120 Z"
+      fill="#5AC48A"
+      fill-opacity="0.18"
+    />
+
+    <!-- Checkmark Icon -->
+    <path
+      d="M220 270 
+         L184 234 
+         C178 228 168 228 162 234 
+         C156 240 156 250 162 256 
+         L209 303 
+         C215 309 225 309 231 303 
+         L350 184 
+         C356 178 356 168 350 162 
+         C344 156 334 156 328 162 
+         L220 270 Z"
+      fill="#176B4D"
+    />
+  </g>
+
+  <!-- Pulse Dot (Early Warning Indicator) -->
+  <circle cx="360" cy="144" r="14" fill="#34D399" />
+  <circle cx="360" cy="144" r="8" fill="#FFFFFF" />
+</svg>

@@ -3,15 +3,60 @@
   "short_name": "SiagaKita",
   "description": "Platform PWA kesiapsiagaan bencana hiperlokal, peta evakuasi offline, dan laporan warga terverifikasi.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0F3822",
-  "theme_color": "#0F3822",
+  "theme_color": "#176B4D",
   "orientation": "portrait-primary",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["weather", "utilities", "emergency"],
   "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Peta Evakuasi",
+      "short_name": "Peta",
+      "description": "Buka peta evakuasi dan shelter terdekat",
+      "url": "/?tab=peta",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Laporan Warga",
+      "short_name": "Laporan",
+      "description": "Laporkan kejadian bencana di sekitar Anda",
+      "url": "/?tab=laporan",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

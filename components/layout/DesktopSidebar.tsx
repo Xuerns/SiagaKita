@@ -43,6 +43,7 @@ export interface DesktopSidebarProps {
   onSelectTab: (tab: NavTab) => void;
   warningCount?: number;
   className?: string;
+  onTestRiskAlert?: () => void;
 }
 
 // Shared item styling: centered + fixed square when collapsed.
@@ -56,12 +57,12 @@ function InnerDesktopSidebar({
   onSelectTab,
   warningCount = 1,
   className,
+  onTestRiskAlert,
 }: DesktopSidebarProps) {
 
-  const navItems = [
+  const navItems: { id: NavTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: "beranda", label: "Beranda", icon: Home },
     { id: "peta", label: "Peta Evakuasi", icon: Map },
-    { id: "peringatan", label: "Peringatan Dini", icon: AlertTriangle, badge: warningCount },
     { id: "laporan", label: "Laporan Warga", icon: FileText },
     { id: "mitigasi", label: "Mitigasi", icon: ShieldAlert },
   ];
@@ -124,6 +125,33 @@ function InnerDesktopSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {onTestRiskAlert && (
+          <SidebarGroup className="p-0 pt-4">
+            <SidebarGroupLabel className="px-2 text-[10px] font-bold uppercase tracking-wider text-[#929D96]">
+              Mode Pengujian
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    tooltip="Tes Pop-up Peringatan Tinggi"
+                    onClick={onTestRiskAlert}
+                    className={cn(
+                      itemBase,
+                      "h-10 gap-2.5 text-[#B71C1C] hover:bg-[#FDECEC] hover:text-[#991B1B] bg-[#FFF5F5] border border-red-200/80 font-medium"
+                    )}
+                  >
+                    <AlertTriangle className="size-4 shrink-0 text-[#D64545]" />
+                    <span className={cn("truncate font-semibold text-xs", labelHide)}>
+                      Tes Pop-up Siaga
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[#F1F4F2] p-2">
