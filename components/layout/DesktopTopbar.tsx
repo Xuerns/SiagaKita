@@ -8,9 +8,9 @@ import {
   Wifi, 
   WifiOff, 
   Check,
-  UserCheck
 } from "lucide-react";
 import { INDONESIA_REGIONS } from "@/lib/bmkg";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface DesktopTopbarProps {
   currentLocation: string;
@@ -19,7 +19,6 @@ interface DesktopTopbarProps {
   isOnline: boolean;
   onToggleOnline: () => void;
   onOpenNotifications: () => void;
-  onOpenProfile: () => void;
 }
 
 export function DesktopTopbar({
@@ -29,7 +28,6 @@ export function DesktopTopbar({
   isOnline,
   onToggleOnline,
   onOpenNotifications,
-  onOpenProfile,
 }: DesktopTopbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownSearch, setDropdownSearch] = useState("");
@@ -58,15 +56,18 @@ export function DesktopTopbar({
   }, [dropdownSearch]);
 
   return (
-    <header className="h-16 bg-white border-b border-[#E6EBE8] px-6 flex items-center justify-between sticky top-0 z-10">
-      {/* Search Bar */}
-      <div className="relative w-80 md:w-96">
-        <Search className="w-4 h-4 text-[#929D96] absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Cari lokasi, wilayah, atau informasi..."
-          className="w-full pl-9 pr-4 py-2 bg-[#F8FAF9] rounded-[10px] text-xs md:text-sm text-[#17211D] placeholder:text-[#929D96] border border-[#E6EBE8] focus:outline-none focus:border-[#176B4D] focus:bg-white transition-all"
-        />
+    <header className="h-16 bg-white border-b border-[#E6EBE8] px-3 flex items-center justify-between sticky top-0 z-10">
+      {/* Search Bar & Sidebar Trigger */}
+      <div className="flex items-center gap-3">
+        <SidebarTrigger className="size-9 rounded-[10px] border border-[#E6EBE8] bg-white text-[#68756E] hover:border-[#CDD7D1] hover:bg-[#E5F5EA] hover:text-[#176B4D] cursor-pointer transition-colors" />
+        <div className="relative w-72 md:w-80">
+          <Search className="w-4 h-4 text-[#929D96] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Cari lokasi, wilayah, atau informasi..."
+            className="w-full pl-9 pr-4 py-2 bg-[#F8FAF9] rounded-[10px] text-xs md:text-sm text-[#17211D] placeholder:text-[#929D96] border border-[#E6EBE8] focus:outline-none focus:border-[#176B4D] focus:bg-white transition-all"
+          />
+        </div>
       </div>
 
       {/* Right controls */}
@@ -155,7 +156,7 @@ export function DesktopTopbar({
             }
           }}
           title="Gunakan lokasi saya saat ini (GPS)"
-          className="p-2 rounded-[10px] text-[#68756E] hover:text-[#176B4D] hover:bg-[#F8FAF9] border border-transparent hover:border-[#E6EBE8] transition-all"
+          className="p-2 rounded-[10px] text-[#68756E] hover:text-[#176B4D] hover:bg-[#F8FAF9] border border-transparent hover:border-[#E6EBE8] transition-all cursor-pointer"
         >
           <Crosshair className="w-4 h-4" />
         </button>
@@ -164,7 +165,7 @@ export function DesktopTopbar({
         <button
           onClick={onToggleOnline}
           title={isOnline ? "Mode Online (Klik untuk simulasi offline)" : "Mode Offline aktif (Klik untuk online)"}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[11px] font-medium border transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[11px] font-medium border transition-colors cursor-pointer ${
             isOnline
               ? "bg-[#E5F5EA] text-[#176B4D] border-[#CDD7D1]"
               : "bg-[#FEF1E6] text-[#C96B10] border-[#FBD6B5]"
@@ -186,31 +187,14 @@ export function DesktopTopbar({
         {/* Notification Bell */}
         <button
           onClick={onOpenNotifications}
-          className="relative p-2 rounded-[10px] text-[#68756E] hover:text-[#17211D] hover:bg-[#F8FAF9] transition-colors"
+          className="relative p-2 rounded-[10px] text-[#68756E] hover:text-[#17211D] hover:bg-[#F8FAF9] transition-colors cursor-pointer"
         >
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D64545] ring-2 ring-white animate-pulse" />
         </button>
 
-        <div className="h-5 w-px bg-[#E6EBE8] mx-1" />
-
-        {/* User Profile */}
-        <button 
-          onClick={onOpenProfile}
-          className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-[10px] hover:bg-[#F8FAF9] transition-colors"
-        >
-          <div className="w-8 h-8 rounded-full bg-[#176B4D] text-white font-semibold text-xs flex items-center justify-center ring-2 ring-[#E5F5EA]">
-            AN
-          </div>
-          <div className="text-left hidden sm:block">
-            <div className="text-xs font-semibold text-[#17211D] leading-tight">Adams Nugraha</div>
-            <div className="text-[10px] text-[#68756E] flex items-center gap-0.5">
-              <UserCheck className="w-2.5 h-2.5 text-[#176B4D]" />
-              Pengguna Warga
-            </div>
-          </div>
-        </button>
       </div>
     </header>
   );
 }
+

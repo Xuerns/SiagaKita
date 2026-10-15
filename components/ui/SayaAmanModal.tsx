@@ -60,11 +60,10 @@ export function SayaAmanModal({ isOpen, onClose }: SayaAmanModalProps) {
             <div className="space-y-2">
               <label
                 onClick={() => setStatus("aman_rumah")}
-                className={`p-3 rounded-[12px] border flex items-center justify-between cursor-pointer transition-colors ${
-                  status === "aman_rumah"
+                className={`p-3 rounded-[12px] border flex items-center justify-between cursor-pointer transition-colors ${status === "aman_rumah"
                     ? "bg-[#E5F5EA] border-[#176B4D]"
                     : "bg-[#F8FAF9] border-[#E6EBE8]"
-                }`}
+                  }`}
               >
                 <div>
                   <span className="text-xs font-bold text-[#17211D] block">
@@ -81,11 +80,10 @@ export function SayaAmanModal({ isOpen, onClose }: SayaAmanModalProps) {
 
               <label
                 onClick={() => setStatus("titik_evakuasi")}
-                className={`p-3 rounded-[12px] border flex items-center justify-between cursor-pointer transition-colors ${
-                  status === "titik_evakuasi"
+                className={`p-3 rounded-[12px] border flex items-center justify-between cursor-pointer transition-colors ${status === "titik_evakuasi"
                     ? "bg-[#E5F5EA] border-[#176B4D]"
                     : "bg-[#F8FAF9] border-[#E6EBE8]"
-                }`}
+                  }`}
               >
                 <div>
                   <span className="text-xs font-bold text-[#17211D] block">

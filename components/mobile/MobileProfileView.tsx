@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { 
   User, 
   MapPin, 
@@ -9,8 +9,10 @@ import {
   Lock, 
   Check, 
   LogOut,
+  LogIn,
   ChevronRight 
 } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface MobileProfileViewProps {
   currentLocation: string;
@@ -21,8 +23,22 @@ export function MobileProfileView({
   currentLocation,
   onOpenOfflineManager,
 }: MobileProfileViewProps) {
+  const { user, isGuest, logout } = useAuth();
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [guestMode, setGuestMode] = useState(false);
+
+  const initials = useMemo(() => {
+    if (!user?.nama) return "TM";
+    const words = user.nama.trim().split(/\s+/);
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }, [user?.nama]);
+
+  const roleLabel = useMemo(() => {
+    if (isGuest || user?.is_anonymous) return "Mode Tamu";
+    if (user?.role === "relawan") return "Relawan Siaga";
+    if (user?.role === "admin") return "Admin Wilayah";
+    return "Pengguna Warga";
+  }, [user, isGuest]);
 
   return (
     <div className="p-4 space-y-4 pb-20 select-none">
@@ -30,27 +46,40 @@ export function MobileProfileView({
       <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-[#176B4D] text-white font-bold flex items-center justify-center text-base shadow-sm">
-            {guestMode ? "TG" : "AN"}
+            {initials}
           </div>
           <div>
             <h3 className="text-sm font-bold text-[#17211D]">
-              {guestMode ? "Tamu SiagaKita" : "Adams Nugraha"}
+              {user?.nama || "Tamu SiagaKita"}
             </h3>
             <span className="text-[11px] text-[#68756E] block">
-              {guestMode ? "Akses Terbuka Tanpa Akun" : "adams.nugraha@gmail.com"}
+              {user?.email || (isGuest ? "Akses Terbuka Tanpa Akun" : "Tanpa Alamat Email")}
             </span>
-            <span className="inline-block mt-1 text-[10px] bg-[#E5F5EA] text-[#176B4D] px-2 py-0.2 rounded font-semibold">
-              {guestMode ? "Mode Tamu" : "Akun Terverifikasi"}
+            <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded font-semibold ${
+              isGuest ? "bg-[#FEF1E6] text-[#C96B10]" : "bg-[#E5F5EA] text-[#176B4D]"
+            }`}>
+              {roleLabel}
             </span>
           </div>
         </div>
 
-        <button
-          onClick={() => setGuestMode(!guestMode)}
-          className="text-[10px] font-bold text-[#176B4D] hover:underline"
-        >
-          {guestMode ? "Masuk Akun" : "Mode Tamu"}
-        </button>
+        {isGuest ? (
+          <a
+            href="/login"
+            className="text-[11px] font-bold text-[#176B4D] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Masuk</span>
+          </a>
+        ) : (
+          <button
+            onClick={() => logout()}
+            className="text-[11px] font-bold text-[#D64545] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Keluar</span>
+          </button>
+        )}
       </div>
 
       {/* Emergency Contacts Widget */}
@@ -94,7 +123,7 @@ export function MobileProfileView({
           </div>
           <button
             onClick={() => setPushEnabled(!pushEnabled)}
-            className={`w-11 h-6 rounded-full transition-colors relative ${
+            className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
               pushEnabled ? "bg-[#176B4D]" : "bg-[#CDD7D1]"
             }`}
           >
@@ -132,7 +161,23 @@ export function MobileProfileView({
           </div>
           <span className="text-[10px] font-bold text-[#176B4D]">Aktif</span>
         </div>
+
+        {/* Logout item */}
+        <div
+          onClick={() => logout()}
+          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#FDECEC]/50 text-[#D64545]"
+        >
+          <div className="flex items-center gap-2.5">
+            <LogOut className="w-4 h-4 text-[#D64545]" />
+            <div>
+              <span className="font-semibold block">Keluar dari Akun</span>
+              <span className="text-[10px] text-[#D64545]/70">Hapus sesi login di perangkat ini</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#D64545]" />
+        </div>
       </div>
     </div>
   );
 }
+

@@ -1,117 +1,153 @@
-import React from "react";
-import { 
-  Home, 
-  Map, 
-  AlertTriangle, 
-  FileText, 
-  ShieldAlert, 
-  Users, 
-  Settings,
-  ShieldCheck,
-  TreePine,
-  Home as HouseIcon
+"use client";
+
+import React, { useContext } from "react";
+import {
+  Home,
+  Map,
+  AlertTriangle,
+  FileText,
+  ShieldAlert,
+  Users,
 } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarContext,
+} from "@/components/ui/sidebar";
+import { SidebarLogo } from "@/components/layout/SidebarLogo";
+import { SidebarUserMenu } from "@/components/layout/SidebarUserMenu";
+import { cn } from "@/lib/utils";
 
-export type NavTab = "beranda" | "peta" | "peringatan" | "laporan" | "mitigasi" | "komunitas" | "pengaturan" | "tokens";
+export type NavTab =
+  | "beranda"
+  | "peta"
+  | "peringatan"
+  | "laporan"
+  | "mitigasi"
+  | "komunitas"
+  | "pengaturan"
+  | "tokens";
 
-interface DesktopSidebarProps {
+export interface DesktopSidebarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   warningCount?: number;
+  className?: string;
 }
 
-export function DesktopSidebar({ currentTab, onSelectTab, warningCount = 1 }: DesktopSidebarProps) {
+// Shared item styling: centered + fixed square when collapsed.
+const itemBase =
+  "rounded-[10px] px-3 text-[13px] font-medium transition-colors cursor-pointer " +
+  "group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:justify-center";
+const labelHide = "group-data-[collapsible=icon]:hidden";
+
+function InnerDesktopSidebar({
+  currentTab,
+  onSelectTab,
+  warningCount = 1,
+  className,
+}: DesktopSidebarProps) {
+
   const navItems = [
     { id: "beranda", label: "Beranda", icon: Home },
-    { id: "peta", label: "Peta", icon: Map },
-    { id: "peringatan", label: "Peringatan", icon: AlertTriangle, badge: warningCount },
+    { id: "peta", label: "Peta Evakuasi", icon: Map },
+    { id: "peringatan", label: "Peringatan Dini", icon: AlertTriangle, badge: warningCount },
     { id: "laporan", label: "Laporan Warga", icon: FileText },
     { id: "mitigasi", label: "Mitigasi", icon: ShieldAlert },
     { id: "komunitas", label: "Komunitas", icon: Users },
   ];
 
+  const stateClass = (active: boolean) =>
+    active
+      ? "bg-[#E5F5EA] text-[#176B4D] font-semibold"
+      : "text-[#68756E] hover:bg-[#F5F7F6] hover:text-[#17211D]";
+
   return (
-    <aside className="w-[190px] min-w-[190px] h-screen sticky top-0 bg-white border-r border-[#E6EBE8] flex flex-col justify-between p-4 z-20 select-none">
-      {/* Top Branding */}
-      <div>
-        <div 
-          onClick={() => onSelectTab("beranda")}
-          className="flex items-center gap-2.5 mb-8 cursor-pointer group"
-        >
-          <div className="w-9 h-9 rounded-[10px] bg-[#176B4D] flex items-center justify-center text-white shadow-sm group-hover:bg-[#104A35] transition-colors">
-            <ShieldCheck className="w-5 h-5 text-emerald-300" />
-          </div>
-          <div>
-            <div className="text-[17px] font-bold tracking-tight text-[#17211D] leading-none flex items-center gap-0.5">
-              Siaga<span className="text-[#176B4D]">Kita</span>
-            </div>
-            <div className="text-[10px] text-[#68756E] mt-0.5 leading-tight">
-              Siap Hari Ini, Aman Esok
-            </div>
-          </div>
-        </div>
+    <Sidebar
+      collapsible="icon"
+      className={cn("border-r border-[#E6EBE8] bg-white select-none", className)}
+    >
+      <SidebarHeader className="p-3 group-data-[collapsible=icon]:px-2">
+        <SidebarLogo onClick={() => onSelectTab("beranda")} />
+      </SidebarHeader>
 
-        {/* Navigation list */}
-        <nav className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectTab(item.id as NavTab)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-[10px] text-[13px] font-medium transition-all ${
-                  isActive
-                    ? "bg-[#E5F5EA] text-[#176B4D] font-semibold"
-                    : "text-[#68756E] hover:bg-[#F5F7F6] hover:text-[#17211D]"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 ${isActive ? "text-[#176B4D]" : "text-[#929D96]"}`} />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className="bg-[#D64545] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full min-w-[18px] text-center">
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      <SidebarSeparator className="mx-2 w-auto bg-[#F1F4F2]" />
 
-      {/* Bottom Settings & Education Graphic */}
-      <div className="space-y-4 pt-4 border-t border-[#F1F4F2]">
-        <button
-          onClick={() => onSelectTab("pengaturan")}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[13px] font-medium transition-colors ${
-            currentTab === "pengaturan"
-              ? "bg-[#E5F5EA] text-[#176B4D] font-semibold"
-              : "text-[#68756E] hover:bg-[#F5F7F6] hover:text-[#17211D]"
-          }`}
-        >
-          <Settings className="w-4 h-4 text-[#929D96]" />
-          <span>Pengaturan</span>
-        </button>
+      <SidebarContent className="px-2">
+        <SidebarGroup className="p-0 pt-2">
+          <SidebarGroupLabel className="px-2 text-[10px] font-bold uppercase tracking-wider text-[#929D96]">
+            Menu Utama
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                const hasBadge = item.badge !== undefined && item.badge > 0;
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.label}
+                      onClick={() => onSelectTab(item.id as NavTab)}
+                      className={cn(itemBase, "h-10 gap-2.5", stateClass(isActive))}
+                    >
+                      <Icon
+                        className={cn(
+                          "size-4 shrink-0",
+                          isActive ? "text-[#176B4D]" : "text-[#929D96]"
+                        )}
+                      />
+                      <span className={cn("truncate", labelHide)}>{item.label}</span>
+                    </SidebarMenuButton>
+                    {hasBadge && (
+                      <>
+                        <SidebarMenuBadge className="top-2.5! min-w-[18px] rounded-full bg-[#D64545] px-1.5 text-[10px] font-bold text-white peer-hover/menu-button:text-white peer-data-active/menu-button:text-white">
+                          {item.badge}
+                        </SidebarMenuBadge>
+                        {/* Collapsed: red dot on the icon */}
+                        <span className="pointer-events-none absolute right-2 top-2 hidden size-2 rounded-full bg-[#D64545] ring-2 ring-white group-data-[collapsible=icon]:block" />
+                      </>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
 
-        {/* Stylized Illustrated Widget */}
-        <div className="bg-[#F1F8F3] rounded-[14px] p-3 border border-[#E5F5EA] text-center relative overflow-hidden">
-          <div className="flex justify-center items-center gap-2 mb-2 text-[#25845F]">
-            <TreePine className="w-4 h-4" />
-            <HouseIcon className="w-5 h-5 text-[#176B4D]" />
-            <TreePine className="w-4 h-4" />
-          </div>
-          <p className="text-[11px] text-[#104A35] font-medium leading-relaxed">
-            Bersama kita lebih siap menghadapi bencana.
-          </p>
-          <div className="mt-2">
-            <span className="text-[9px] text-[#25845F] font-semibold bg-white/70 px-2 py-0.5 rounded-full border border-[#CDD7D1]">
-              PWA Aktif • Offline Ready
-            </span>
-          </div>
-        </div>
-      </div>
-    </aside>
+      <SidebarFooter className="border-t border-[#F1F4F2] p-2">
+        <SidebarUserMenu onOpenSettings={() => onSelectTab("pengaturan")} />
+      </SidebarFooter>
+
+      <SidebarRail />
+    </Sidebar>
   );
+}
+
+export function DesktopSidebar(props: DesktopSidebarProps) {
+  const hasProvider = useContext(SidebarContext);
+
+  if (!hasProvider) {
+    return (
+      <SidebarProvider className="min-h-screen w-auto shrink-0">
+        <InnerDesktopSidebar {...props} />
+      </SidebarProvider>
+    );
+  }
+
+  return <InnerDesktopSidebar {...props} />;
 }
