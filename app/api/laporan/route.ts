@@ -202,9 +202,9 @@ export async function POST(request: NextRequest) {
     // 1. Cek sesi autentikasi pengguna
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError || !user || user.is_anonymous) {
       return NextResponse.json(
-        { error: 'Harap masuk terlebih dahulu sebelum membuat laporan kondisi lapangan.' },
+        { error: 'Harap masuk terlebih dahulu sebelum membuat laporan kondisi lapangan. Mode tamu tidak diizinkan membuat laporan.' },
         { status: 401 }
       );
     }

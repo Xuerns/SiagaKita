@@ -217,6 +217,29 @@ describe('Community Reports API (/api/laporan & konfirmasi)', () => {
       expect(json.error).toContain('Harap masuk terlebih dahulu');
     });
 
+    it('Bad Route: Ditolak dengan 401 jika pengguna dalam mode tamu (is_anonymous: true)', async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { id: 'guest-12345', is_anonymous: true } },
+        error: null,
+      });
+
+      const req = new NextRequest('http://localhost:3000/api/laporan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipe: 'Banjir',
+          lat: -6.234,
+          lng: 106.864,
+        }),
+      });
+
+      const res = await createReportHandler(req);
+      const json = await res.json();
+
+      expect(res.status).toBe(401);
+      expect(json.error).toContain('Mode tamu tidak diizinkan membuat laporan');
+    });
+
     it('Bad Route: Ditolak dengan 400 jika koordinat tidak valid', async () => {
       mockGetUser.mockResolvedValueOnce({
         data: { user: { id: 'user-reporter-1' } },
