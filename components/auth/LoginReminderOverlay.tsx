@@ -5,22 +5,57 @@ import Link from "next/link";
 import { Lock, LogIn, UserPlus, ArrowLeft } from "lucide-react";
 
 interface LoginReminderOverlayProps {
-  onBackToHome: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onBackToHome?: () => void;
   title?: string;
   description?: string;
 }
 
 export function LoginReminderOverlay({
+  isOpen = true,
+  onClose,
   onBackToHome,
-  title = "Masuk untuk Akses Laporan Warga",
-  description = "Untuk membagikan laporan kondisi lapangan, memvalidasi situasi bencana, dan mengakses informasi detail, silakan masuk dengan akun terverifikasi terlebih dahulu.",
+  title = "Masuk untuk Buat Laporan",
+  description = "Untuk membagikan laporan kondisi lapangan, memvalidasi situasi bencana, dan membantu warga sekitar, silakan masuk dengan akun terverifikasi. Mode tamu tidak diizinkan membuat laporan guna menjaga keaslian data.",
 }: LoginReminderOverlayProps) {
+  if (!isOpen) return null;
+
+  const handleClose = onClose || onBackToHome || (() => {});
+
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-white/30 backdrop-blur-xs animate-in fade-in duration-200">
-      {/* Kartu persegi panjang dengan sudut melengkung / sisi tidak tajam (Scribd-style) */}
-      <div className="bg-white rounded-[24px] p-6 md:p-8 max-w-[380px] md:max-w-[420px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.18)] border border-[#E6EBE8] animate-in zoom-in-95 duration-200 relative overflow-hidden select-none">
-        {/* Aksen atas hijau khas SiagaKita */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#176B4D] via-[#2E9E74] to-[#176B4D]" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+      {/* Backdrop click to dismiss */}
+      <div
+        className="fixed inset-0"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+
+      {/* Kartu persegi panjang dengan sudut melengkung halus */}
+      <div className="bg-white rounded-[24px] p-6 md:p-8 max-w-[380px] md:max-w-[420px] w-full text-center shadow-[0_20px_50px_rgba(0,0,0,0.22)] border border-[#E6EBE8] animate-in zoom-in-95 duration-200 relative overflow-hidden select-none z-10">
+        {/* Tombol Tutup (X) */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 p-1.5 rounded-full text-[#929D96] hover:text-[#17211D] hover:bg-[#F0F4F2] transition-colors cursor-pointer"
+          title="Tutup dialog"
+          aria-label="Tutup"
+        >
+          <ArrowLeft className="w-4 h-4 sr-only" />
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
 
         {/* Lingkaran Ikon Gembok */}
         <div className="w-14 h-14 rounded-full bg-[#E5F5EA] text-[#176B4D] flex items-center justify-center mx-auto mb-4 border border-[#CDD7D1] shadow-xs">
@@ -55,11 +90,10 @@ export function LoginReminderOverlay({
           </Link>
 
           <button
-            onClick={onBackToHome}
+            onClick={handleClose}
             className="w-full pt-2 pb-1 text-xs text-[#929D96] hover:text-[#17211D] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali ke Beranda</span>
+            <span>Nanti Saja</span>
           </button>
         </div>
       </div>

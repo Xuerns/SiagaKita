@@ -344,6 +344,7 @@ export default function SiagaKitaApp() {
   const [showEmergencyFullscreen, setShowEmergencyFullscreen] = useState<boolean>(false);
   const [showOfflineModal, setShowOfflineModal] = useState<boolean>(false);
   const [showCreateReportModal, setShowCreateReportModal] = useState<boolean>(false);
+  const [showLoginReminderModal, setShowLoginReminderModal] = useState<boolean>(false);
   const [showSayaAmanModal, setShowSayaAmanModal] = useState<boolean>(false);
   const [showPushNotification, setShowPushNotification] = useState<boolean>(false);
   const [focusTimestamp, setFocusTimestamp] = useState<number>(0);
@@ -521,14 +522,23 @@ export default function SiagaKitaApp() {
   };
 
   const handleCreateReport = async (newRep: Partial<CommunityReport> & { lat?: number; lng?: number }) => {
+    // Mode tamu tidak diizinkan membuat laporan
+    if (isGuestMode) {
+      setShowCreateReportModal(false);
+      setShowLoginReminderModal(true);
+      return;
+    }
+
     // Utamakan koordinat presisi dari GPS modal laporan, fallback ke userCoords atau default kota aktif
     const cityDefault = getDefaultCoordinatesForLocation(newRep.locationName || currentLocation);
     const reportLat = typeof newRep.lat === "number" ? newRep.lat : (userCoords?.lat ?? cityDefault.lat);
     const reportLng = typeof newRep.lng === "number" ? newRep.lng : (userCoords?.lng ?? cityDefault.lng);
 
+    const authorName = user?.nama || user?.email?.split("@")[0] || newRep.userName || "Warga Siaga";
+
     const created: CommunityReport = {
       id: `rep-${Date.now()}`,
-      userName: newRep.userName || "Adam",
+      userName: authorName,
       category: newRep.category || "Banjir",
       tipe: newRep.category || "Banjir",
       title: newRep.title || "Laporan Lapangan",
@@ -670,30 +680,19 @@ export default function SiagaKitaApp() {
                 />
               ) : mobileTab === "laporan" ? (
                 <div className="relative min-h-[520px]">
-                  <div
-                    className={
-                      isGuestMode
-                        ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
-                        : ""
-                    }
-                  >
-                    <MobileCommunityView
-                      reports={communityReports}
-                      onOpenCreateModal={() => {
-                        if (isGuestMode) return;
-                        setShowCreateReportModal(true);
-                      }}
-                      onConfirmReport={handleConfirmReport}
-                      onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                      isRefreshing={isRefreshingReports}
-                    />
-                  </div>
-
-                  {isGuestMode && (
-                    <LoginReminderOverlay
-                      onBackToHome={() => setMobileTab("beranda")}
-                    />
-                  )}
+                  <MobileCommunityView
+                    reports={communityReports}
+                    onOpenCreateModal={() => {
+                      if (isGuestMode) {
+                        setShowLoginReminderModal(true);
+                        return;
+                      }
+                      setShowCreateReportModal(true);
+                    }}
+                    onConfirmReport={handleConfirmReport}
+                    onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                    isRefreshing={isRefreshingReports}
+                  />
                 </div>
               ) : mobileTab === "mitigasi" ? (
                 <MobileMitigationView />
@@ -810,49 +809,38 @@ export default function SiagaKitaApp() {
                 {/* SCREEN D: LAPORAN WARGA */}
                 {currentTab === "laporan" && (
                   <div className="relative min-h-[520px]">
-                    <div
-                      className={
-                        isGuestMode
-                          ? "filter blur-md select-none pointer-events-none opacity-40 transition-all duration-300"
-                          : ""
-                      }
-                    >
-                      <div className="space-y-4">
-                        <div>
-                          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
-                            Forum Kondisi Lokal
-                          </h1>
-                          <p className="text-xs text-[#68756E] mt-0.5">
-                            Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
-                          </p>
-                        </div>
-
-                        <CommunityFeed
-                          reports={communityReports}
-                          onOpenCreateModal={() => {
-                            if (isGuestMode) return;
-                            setShowCreateReportModal(true);
-                          }}
-                          onNavigateToMap={(rep) => {
-                            if (rep.lat && rep.lng) {
-                              setUserCoords({ lat: rep.lat, lng: rep.lng });
-                            }
-                            setCurrentTab("peta");
-                            setMapLayerTab("laporan");
-                            setFocusTimestamp(Date.now());
-                          }}
-                          onConfirmReport={handleConfirmReport}
-                          onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
-                          isRefreshing={isRefreshingReports}
-                        />
+                    <div className="space-y-4">
+                      <div>
+                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#17211D]">
+                          Forum Kondisi Lokal
+                        </h1>
+                        <p className="text-xs text-[#68756E] mt-0.5">
+                          Bagikan dan periksa kondisi lapangan di sekitar wilayahmu secara terverifikasi.
+                        </p>
                       </div>
-                    </div>
 
-                    {isGuestMode && (
-                      <LoginReminderOverlay
-                        onBackToHome={() => setCurrentTab("beranda")}
+                      <CommunityFeed
+                        reports={communityReports}
+                        onOpenCreateModal={() => {
+                          if (isGuestMode) {
+                            setShowLoginReminderModal(true);
+                            return;
+                          }
+                          setShowCreateReportModal(true);
+                        }}
+                        onNavigateToMap={(rep) => {
+                          if (rep.lat && rep.lng) {
+                            setUserCoords({ lat: rep.lat, lng: rep.lng });
+                          }
+                          setCurrentTab("peta");
+                          setMapLayerTab("laporan");
+                          setFocusTimestamp(Date.now());
+                        }}
+                        onConfirmReport={handleConfirmReport}
+                        onRefresh={() => fetchReports(userCoords?.lat, userCoords?.lng)}
+                        isRefreshing={isRefreshingReports}
                       />
-                    )}
+                    </div>
                   </div>
                 )}
 
@@ -914,6 +902,11 @@ export default function SiagaKitaApp() {
             setUserCoords(coords);
           }
         }}
+      />
+
+      <LoginReminderOverlay
+        isOpen={showLoginReminderModal}
+        onClose={() => setShowLoginReminderModal(false)}
       />
 
       <OfflineMapModal
