@@ -4,7 +4,8 @@ import {
   Mountain, 
   Activity, 
   Wind, 
-  Flame, 
+  Flame,
+  Waves,
   DownloadCloud, 
   FileCheck 
 } from "lucide-react";
@@ -21,9 +22,11 @@ export function MitigationGuide() {
     mockMitigationGuides[0];
 
   const categories = [
-    { id: "banjir", label: "Banjir & Luapan", icon: Droplets },
+    { id: "banjir", label: "Banjir Bandang", icon: Droplets },
     { id: "longsor", label: "Tanah Longsor", icon: Mountain },
     { id: "gempa", label: "Gempa Bumi", icon: Activity },
+    { id: "tsunami", label: "Tsunami (20-20-20)", icon: Waves },
+    { id: "gunungapi", label: "Gunung Api", icon: Flame },
     { id: "cuaca", label: "Cuaca Ekstrem", icon: Wind },
     { id: "kebakaran", label: "Kebakaran Lahan", icon: Flame },
   ];
@@ -36,7 +39,7 @@ export function MitigationGuide() {
   return (
     <div className="space-y-6">
       {/* Category selector row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
         {categories.map((cat) => {
           const Icon = cat.icon;
           const isSelected = selectedDisasterId === cat.id;

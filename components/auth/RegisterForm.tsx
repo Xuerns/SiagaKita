@@ -312,7 +312,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
               setIsLocationDropdownOpen(!isLocationDropdownOpen);
               setRegionSearchQuery("");
             }}
-            className={`w-full pl-10 pr-3.5 py-2 rounded-[10px] text-xs md:text-sm text-left border flex items-center justify-between transition-all cursor-pointer ${
+            className={`w-full relative pl-10 pr-3.5 py-2 min-h-[40px] rounded-[10px] text-xs md:text-sm text-left border flex items-center justify-between transition-all cursor-pointer ${
               isLocationDropdownOpen
                 ? "bg-white border-[#176B4D] ring-2 ring-[#E5F5EA]"
                 : "bg-[#F8FAF9] border-[#E6EBE8] hover:bg-[#F1F4F2]"

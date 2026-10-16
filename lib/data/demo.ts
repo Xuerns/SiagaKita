@@ -90,8 +90,8 @@ export const DEMO_ALERTS: Alert[] = [
 export const DEMO_COMMUNITY_REPORTS: CommunityReport[] = [
   {
     id: 'rep-1',
-    user_id: 'user-relawan-1',
-    user_name: 'Ahmad (Relawan RT 02)',
+    user_id: 'user-warga-1',
+    user_name: 'Ahmad (Warga RT 02)',
     tipe: 'Sungai Meluap',
     deskripsi: 'Air kali Ciliwung sudah melewati bibir tanggul RT 02, arus cukup deras. Warga bantaran mulai evakuasi.',
     lat: -6.2345,

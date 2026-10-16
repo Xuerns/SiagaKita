@@ -58,22 +58,41 @@ export function DesktopTopbar({
 
   return (
     <header className="h-16 bg-white border-b border-[#E6EBE8] px-3 flex items-center justify-between sticky top-0 z-40">
-      {/* Sidebar Trigger */}
-      <div className="flex items-center">
-        <SidebarTrigger className="size-9 rounded-[10px] border border-[#E6EBE8] bg-white text-[#68756E] hover:border-[#CDD7D1] hover:bg-[#E5F5EA] hover:text-[#176B4D] cursor-pointer transition-colors" />
+      {/* Sidebar Trigger (hanya desktop/tablet) & Logo untuk mobile */}
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="hidden md:flex size-9 rounded-[10px] border border-[#E6EBE8] bg-white text-[#68756E] hover:border-[#CDD7D1] hover:bg-[#E5F5EA] hover:text-[#176B4D] cursor-pointer transition-colors" />
+
+        {/* Logo tanpa background khusus tampilan mobile */}
+        <div className="flex md:hidden items-center gap-1.5 select-none pl-1">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-6 h-6 text-[#176B4D] shrink-0"
+          >
+            <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
+            <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
+          </svg>
+          <span className="text-sm font-bold tracking-tight text-[#17211D]">
+            Siaga<span className="text-[#176B4D]">Kita</span>
+          </span>
+        </div>
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Location Selector Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8] text-xs font-medium text-[#17211D] hover:bg-[#F1F4F2] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-[10px] bg-[#F8FAF9] border border-[#E6EBE8] text-xs font-medium text-[#17211D] hover:bg-[#F1F4F2] transition-colors cursor-pointer"
           >
-            <MapPin className="w-3.5 h-3.5 text-[#176B4D]" />
-            <span className="max-w-[150px] truncate">{currentLocation}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-[#929D96] transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            <MapPin className="w-3.5 h-3.5 text-[#176B4D] shrink-0" />
+            <span className="max-w-[95px] sm:max-w-[150px] truncate">{currentLocation}</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-[#929D96] shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
           </button>
 
           {dropdownOpen && (
@@ -149,7 +168,7 @@ export function DesktopTopbar({
             }
           }}
           title="Gunakan lokasi saya saat ini (GPS)"
-          className="p-2 rounded-[10px] text-[#68756E] hover:text-[#176B4D] hover:bg-[#F8FAF9] border border-transparent hover:border-[#E6EBE8] transition-all cursor-pointer"
+          className="hidden sm:flex p-2 rounded-[10px] text-[#68756E] hover:text-[#176B4D] hover:bg-[#F8FAF9] border border-transparent hover:border-[#E6EBE8] transition-all cursor-pointer"
         >
           <Crosshair className="w-4 h-4" />
         </button>
@@ -158,7 +177,7 @@ export function DesktopTopbar({
         <button
           onClick={onToggleOnline}
           title={isOnline ? "Mode Online (Klik untuk simulasi offline)" : "Mode Offline aktif (Klik untuk online)"}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[11px] font-medium border transition-colors cursor-pointer ${
+          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[11px] font-medium border transition-colors cursor-pointer ${
             isOnline
               ? "bg-[#E5F5EA] text-[#176B4D] border-[#CDD7D1]"
               : "bg-[#FEF1E6] text-[#C96B10] border-[#FBD6B5]"
