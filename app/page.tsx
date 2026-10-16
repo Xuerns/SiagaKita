@@ -80,11 +80,29 @@ export default function SiagaKitaApp() {
     }
   }, [currentEvacuationPoints]);
 
+  // Sinkronisasi status koneksi online/offline secara dinamis dari browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
+
   // Periksa apakah peta offline pernah diunduh dan tersimpan di IndexedDB
   useEffect(() => {
     let mounted = true;
-    getMetadata("offline_map_downloaded").then((meta) => {
-      if (mounted && meta) {
+    Promise.all([
+      getMetadata("offline_map_downloaded"),
+      getMetadata("offline_map_package"),
+    ]).then(([metaDownloaded, metaPackage]) => {
+      if (mounted && (metaDownloaded || metaPackage)) {
         setIsMapOfflineDownloaded(true);
       }
     });
@@ -759,6 +777,27 @@ export default function SiagaKitaApp() {
                 onToggleOnline={() => setIsOnline(!isOnline)}
                 onOpenNotifications={() => setShowPushNotification(true)}
               />
+
+              {/* Emergency Offline Banner */}
+              {!isOnline && (
+                <div className="bg-[#FEF8E7] border-b border-[#FCE39E] px-4 py-2.5 text-xs text-[#92400E] flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] animate-pulse shrink-0" />
+                    <div>
+                      <span className="font-bold">Mode Darurat Offline: </span>
+                      <span>Koneksi internet terputus. Peta dan titik evakuasi yang tersimpan tetap aktif & dapat diakses.</span>
+                    </div>
+                  </div>
+                  {currentTab !== "peta" && (
+                    <button
+                      onClick={() => setCurrentTab("peta")}
+                      className="px-3 py-1 bg-[#176B4D] hover:bg-[#104A35] text-white font-bold rounded-[8px] transition-colors cursor-pointer text-xs shrink-0"
+                    >
+                      Buka Peta Evakuasi Sekarang →
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Main Page Body */}
               <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
