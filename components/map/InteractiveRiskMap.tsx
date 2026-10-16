@@ -356,7 +356,7 @@ export function InteractiveRiskMap({
               const bounds = new maplibregl.LngLatBounds();
               roadCoords.forEach((c: [number, number]) => bounds.extend(c));
               mapRef.current.fitBounds(bounds, {
-                padding: 70,
+                padding: { top: 60, bottom: 60, left: 60, right: 60 },
                 maxZoom: 15.5,
                 duration: 1000,
               });
@@ -463,7 +463,7 @@ export function InteractiveRiskMap({
 
           const markerEl = document.createElement("div");
           markerEl.className = `cursor-pointer flex flex-col items-center select-none ${
-            isSelected ? "z-30" : "z-20"
+            isSelected ? "z-10" : "z-0"
           }`;
 
           // Pin Badge Pill + Circle
@@ -709,10 +709,42 @@ export function InteractiveRiskMap({
     if (mapRef.current) mapRef.current.zoomOut();
   };
 
+  // Resize map otomatis saat layout berubah
+  useEffect(() => {
+    if (mapRef.current) {
+      const timer = setTimeout(() => {
+        mapRef.current?.resize();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeLayer, showRoute, isUserInCurrentCity, userCoords, selectedPoint]);
+
   return (
-    <div className="relative w-full h-[580px] bg-[#E9EFEA] rounded-[16px] overflow-hidden border border-[#CDD7D1] shadow-inner select-none">
-      {/* Real MapLibre GL OpenStreetMap Container */}
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="flex flex-col w-full bg-[#E9EFEA] rounded-[16px] overflow-hidden border border-[#CDD7D1] shadow-inner select-none">
+      {/* Navigation Compass Card Header saat rute aktif */}
+      {(activeLayer === "rute" || showRoute) && isUserInCurrentCity && userCoords && selectedPoint && (
+        <div className="p-3 bg-white border-b border-[#CDD7D1] z-20">
+          <NavigationCompassCard
+            selectedPoint={selectedPoint}
+            userCoords={userCoords}
+            distanceMeters={liveDistanceMeters}
+            isFollowMode={isFollowMode}
+            onToggleFollowMode={() => {
+              const nextMode = !isFollowMode;
+              setIsFollowMode(nextMode);
+              if (nextMode && !liveGeo.isTracking) {
+                liveGeo.startTracking();
+              }
+            }}
+            isOffline={isOffline}
+          />
+        </div>
+      )}
+
+      {/* Map Canvas Viewport */}
+      <div className="relative w-full h-[580px]">
+        {/* Real MapLibre GL OpenStreetMap Container */}
+        <div ref={mapContainerRef} className="w-full h-full relative z-0 isolate" />
 
       {/* Loading Overlay while OpenStreetMap Tiles Init */}
       {!mapLoaded && (
@@ -834,25 +866,7 @@ export function InteractiveRiskMap({
         </div>
       </div>
 
-      {/* Navigation Compass Card saat melihat rute atau menavigasi ke shelter */}
-      {(activeLayer === "rute" || showRoute) && isUserInCurrentCity && userCoords && selectedPoint && (
-        <div className="absolute top-4 left-4 right-14 sm:right-auto sm:max-w-xs md:max-w-sm z-20">
-          <NavigationCompassCard
-            selectedPoint={selectedPoint}
-            userCoords={userCoords}
-            distanceMeters={liveDistanceMeters}
-            isFollowMode={isFollowMode}
-            onToggleFollowMode={() => {
-              const nextMode = !isFollowMode;
-              setIsFollowMode(nextMode);
-              if (nextMode && !liveGeo.isTracking) {
-                liveGeo.startTracking();
-              }
-            }}
-            isOffline={isOffline}
-          />
-        </div>
-      )}
+
 
       {/* Floating Map Controls (Top-Right) */}
       <div className="absolute top-4 right-4 flex flex-col gap-1.5 z-10">
@@ -910,6 +924,7 @@ export function InteractiveRiskMap({
         <span>MapLibre GL JS</span>
         <span>•</span>
         <span>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="hover:underline text-[#176B4D] font-medium">OpenStreetMap</a> contributors</span>
+      </div>
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import {
   Building, 
   MapPin, 
   ArrowRight, 
-  DownloadCloud, 
   CheckCircle2, 
   ShieldCheck,
   Wind,
@@ -27,8 +26,6 @@ interface MapDetailsPanelProps {
   selectedPointId: string | null;
   onSelectPoint: (point: EvacuationPoint) => void;
   onStartRouteNavigation: () => void;
-  onOpenOfflineDownload: () => void;
-  isMapOfflineDownloaded: boolean;
   isGpsActive?: boolean;
 }
 
@@ -45,8 +42,6 @@ export function MapDetailsPanel({
   selectedPointId,
   onSelectPoint,
   onStartRouteNavigation,
-  onOpenOfflineDownload,
-  isMapOfflineDownloaded,
   isGpsActive = false,
 }: MapDetailsPanelProps) {
   const currentSelected = evacuationPoints.find((p) => p.id === selectedPointId) || evacuationPoints[0];
@@ -251,10 +246,10 @@ export function MapDetailsPanel({
       </div>
 
       {/* Action Footer */}
-      <div className="mt-4 pt-3 border-t border-[#F1F4F2] space-y-2">
+      <div className="mt-4 pt-3 border-t border-[#F1F4F2]">
         <button
           onClick={onStartRouteNavigation}
-          className="w-full py-2.5 rounded-[12px] bg-[#176B4D] hover:bg-[#12583e] active:scale-[0.99] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+          className="w-full py-2.5 rounded-[12px] bg-[#176B4D] hover:bg-[#12583e] active:scale-[0.99] text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
         >
           <span>
             {typeof currentSelected?.distanceKm === "number"
@@ -262,27 +257,6 @@ export function MapDetailsPanel({
               : `Peta & Evakuasi (${currentSelected?.name || "Terpilih"})`}
           </span>
           <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={onOpenOfflineDownload}
-          className={`w-full py-2 rounded-[12px] text-xs font-medium border flex items-center justify-center gap-1.5 transition-colors ${
-            isMapOfflineDownloaded
-              ? "bg-[#E5F5EA] text-[#176B4D] border-[#CDD7D1]"
-              : "bg-[#F8FAF9] text-[#68756E] border-[#E6EBE8] hover:bg-[#F1F4F2]"
-          }`}
-        >
-          {isMapOfflineDownloaded ? (
-            <>
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#176B4D]" />
-              <span>Peta Offline Tersimpan ({selectedArea})</span>
-            </>
-          ) : (
-            <>
-              <DownloadCloud className="w-3.5 h-3.5" />
-              <span>Simpan Peta Offline {selectedArea}</span>
-            </>
-          )}
         </button>
       </div>
     </div>

@@ -3,7 +3,6 @@ import {
   MapPin, 
   PhoneCall, 
   Bell, 
-  HardDrive, 
   Lock, 
   LogOut,
   LogIn,
@@ -22,12 +21,11 @@ import {
 
 interface MobileProfileViewProps {
   currentLocation: string;
-  onOpenOfflineManager: () => void;
+  onOpenOfflineManager?: () => void;
 }
 
 export function MobileProfileView({
   currentLocation,
-  onOpenOfflineManager,
 }: MobileProfileViewProps) {
   const { user, isGuest, logout, deleteAccount } = useAuth();
   const [pushStatus, setPushStatus] = useState<"subscribed" | "unsubscribed" | "denied" | "unsupported">("unsubscribed");
@@ -154,21 +152,6 @@ export function MobileProfileView({
               }`}
             />
           </button>
-        </div>
-
-        {/* Offline Storage */}
-        <div
-          onClick={onOpenOfflineManager}
-          className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#F8FAF9]"
-        >
-          <div className="flex items-center gap-2.5">
-            <HardDrive className="w-4 h-4 text-[#176B4D]" />
-            <div>
-              <span className="font-semibold text-[#17211D] block">Penyimpanan Offline</span>
-              <span className="text-[10px] text-[#68756E]">PMTiles & Checklist (42.4 MB)</span>
-            </div>
-          </div>
-          <span className="text-[10px] font-bold text-[#176B4D]">Kelola</span>
         </div>
 
         {/* Privacy */}

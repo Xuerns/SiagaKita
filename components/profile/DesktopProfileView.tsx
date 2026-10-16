@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  DownloadCloud,
   ShieldCheck,
   AlertTriangle,
   LogIn,
@@ -25,7 +24,6 @@ export interface DesktopProfileViewProps {
   isGuest: boolean;
   currentLocation: string;
   onLogout: () => void;
-  onOpenOfflineModal: () => void;
   onOpenNotifications: () => void;
   onOpenDeleteModal: () => void;
 }
@@ -35,7 +33,6 @@ export function DesktopProfileView({
   isGuest,
   currentLocation,
   onLogout,
-  onOpenOfflineModal,
   onOpenNotifications,
   onOpenDeleteModal,
 }: DesktopProfileViewProps) {
@@ -150,90 +147,73 @@ export function DesktopProfileView({
         </div>
       </div>
 
-      {/* LAYANAN OFFLINE & NOTIFIKASI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-[#17211D]">Penyimpanan PWA Offline</h3>
-          <p className="text-xs text-[#68756E]">
-            Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda untuk akses darurat tanpa internet.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenOfflineModal}
-            className="py-2 px-4 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+      {/* LAYANAN NOTIFIKASI DARURAT (WEB PUSH) */}
+      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat (Web Push)</h3>
+          <span
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              pushStatus === "subscribed"
+                ? "bg-[#E5F5EA] text-[#176B4D]"
+                : pushStatus === "denied"
+                ? "bg-[#FEE2E2] text-[#DC2626]"
+                : "bg-[#F5F7F6] text-[#68756E]"
+            }`}
           >
-            <DownloadCloud className="w-4 h-4" />
-            <span>Kelola Peta Offline</span>
-          </button>
+            {pushStatus === "subscribed"
+              ? "Aktif (Terhubung)"
+              : pushStatus === "denied"
+              ? "Izin Ditolak"
+              : pushStatus === "unsupported"
+              ? "Tidak Didukung"
+              : "Belum Aktif"}
+          </span>
         </div>
 
-        <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat (Web Push)</h3>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                pushStatus === "subscribed"
-                  ? "bg-[#E5F5EA] text-[#176B4D]"
-                  : pushStatus === "denied"
-                  ? "bg-[#FEE2E2] text-[#DC2626]"
-                  : "bg-[#F5F7F6] text-[#68756E]"
-              }`}
-            >
-              {pushStatus === "subscribed"
-                ? "Aktif (Terhubung)"
-                : pushStatus === "denied"
-                ? "Izin Ditolak"
-                : pushStatus === "unsupported"
-                ? "Tidak Didukung"
-                : "Belum Aktif"}
-            </span>
-          </div>
+        <p className="text-xs text-[#68756E]">
+          Menerima siaran push darurat VAPID saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di wilayah Anda langsung ke perangkat.
+        </p>
 
-          <p className="text-xs text-[#68756E]">
-            Menerima siaran push darurat VAPID saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di wilayah Anda langsung ke perangkat.
+        {pushMsg && (
+          <p className="text-[11px] font-medium text-[#176B4D] bg-[#E5F5EA] p-2 rounded-[8px]">
+            {pushMsg}
           </p>
+        )}
 
-          {pushMsg && (
-            <p className="text-[11px] font-medium text-[#176B4D] bg-[#E5F5EA] p-2 rounded-[8px]">
-              {pushMsg}
-            </p>
-          )}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleTogglePush}
+            disabled={isPushLoading || pushStatus === "unsupported"}
+            className={`py-2 px-4 rounded-[10px] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              pushStatus === "subscribed"
+                ? "bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E]"
+                : "bg-[#176B4D] hover:bg-[#12533B] text-white shadow-sm"
+            }`}
+          >
+            {isPushLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : pushStatus === "subscribed" ? (
+              <Bell className="w-4 h-4" />
+            ) : (
+              <BellRing className="w-4 h-4" />
+            )}
+            <span>
+              {isPushLoading
+                ? "Memproses..."
+                : pushStatus === "subscribed"
+                ? "Nonaktifkan Push"
+                : "Aktifkan Web Push"}
+            </span>
+          </button>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleTogglePush}
-              disabled={isPushLoading || pushStatus === "unsupported"}
-              className={`py-2 px-4 rounded-[10px] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                pushStatus === "subscribed"
-                  ? "bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E]"
-                  : "bg-[#176B4D] hover:bg-[#12533B] text-white shadow-sm"
-              }`}
-            >
-              {isPushLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : pushStatus === "subscribed" ? (
-                <Bell className="w-4 h-4" />
-              ) : (
-                <BellRing className="w-4 h-4" />
-              )}
-              <span>
-                {isPushLoading
-                  ? "Memproses..."
-                  : pushStatus === "subscribed"
-                  ? "Nonaktifkan Push"
-                  : "Aktifkan Web Push"}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
-            >
-              Tes Suara & Banner
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onOpenNotifications}
+            className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
+          >
+            Tes Suara & Banner
+          </button>
         </div>
       </div>
 

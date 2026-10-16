@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { DownloadCloud, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { InteractiveRiskMap } from "@/components/map/InteractiveRiskMap";
 import { MapDetailsPanel } from "@/components/map/MapDetailsPanel";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, EarthquakeData, RiskLevel } from "@/types";
@@ -23,8 +23,6 @@ export interface DesktopMapViewProps {
   onSelectMapLayerTab: (tab: "evakuasi" | "rute" | "laporan") => void;
   onSelectPoint: (pt: EvacuationPoint) => void;
   onStartRouteNavigation: () => void;
-  onOpenOfflineModal: () => void;
-  isMapOfflineDownloaded: boolean;
   userCoords: { lat: number; lng: number; accuracy?: number } | null;
   latestEarthquake: EarthquakeData | null;
   onUpdateCoords: (coords: { lat: number; lng: number; accuracy?: number } | null) => void;
@@ -46,8 +44,6 @@ export function DesktopMapView({
   onSelectMapLayerTab,
   onSelectPoint,
   onStartRouteNavigation,
-  onOpenOfflineModal,
-  isMapOfflineDownloaded,
   userCoords,
   latestEarthquake,
   onUpdateCoords,
@@ -66,18 +62,6 @@ export function DesktopMapView({
             Pantau area berisiko dan temukan titik evakuasi di wilayahmu.
           </p>
         </div>
-
-        <button
-          onClick={onOpenOfflineModal}
-          className="px-3.5 py-2 rounded-[10px] bg-white border border-[#CDD7D1] hover:bg-[#F8FAF9] text-xs font-semibold text-[#176B4D] flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-        >
-          <DownloadCloud className="w-4 h-4" />
-          <span>
-            {isMapOfflineDownloaded
-              ? "Peta Tersimpan Offline"
-              : "Unduh Peta Offline"}
-          </span>
-        </button>
       </div>
 
       {/* Interactive Map Filter Tabs */}
@@ -159,8 +143,6 @@ export function DesktopMapView({
             selectedPointId={selectedPoint?.id || currentEvacuationPoints[0]?.id}
             onSelectPoint={onSelectPoint}
             onStartRouteNavigation={onStartRouteNavigation}
-            onOpenOfflineDownload={onOpenOfflineModal}
-            isMapOfflineDownloaded={isMapOfflineDownloaded}
             isGpsActive={Boolean(userCoords)}
           />
         </div>
