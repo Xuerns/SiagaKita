@@ -10,7 +10,7 @@ export const registerSchema = z.object({
   email: z.string().email('Format email tidak valid'),
   password: z.string().min(8, 'Kata sandi minimal 8 karakter'),
   nama: z.string().min(2, 'Nama minimal 2 karakter').max(100, 'Nama maksimal 100 karakter'),
-  role: z.enum(['warga', 'relawan']).default('warga'),
+  role: z.enum(['warga']).default('warga'),
   region_id: z.string().optional().nullable(),
   location: z.string().max(100).optional().nullable(),
   phone: z.string().optional().nullable(),
@@ -42,3 +42,17 @@ export const safetyStatusSchema = z.object({
   lng: z.number().min(-180).max(180).optional().nullable(),
   catatan: z.string().max(500, 'Catatan maksimal 500 karakter').optional().nullable(),
 });
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url('Endpoint harus berformat URL yang valid'),
+  keys: z.object({
+    p256dh: z.string().min(1, 'Kunci p256dh tidak boleh kosong'),
+    auth: z.string().min(1, 'Kunci auth tidak boleh kosong'),
+  }),
+  region_id: z.string().uuid('Format UUID wilayah tidak valid').optional().nullable(),
+});
+
+export const deletePushSubscriptionSchema = z.object({
+  endpoint: z.string().url('Endpoint harus berformat URL yang valid'),
+});
+

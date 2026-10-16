@@ -100,18 +100,18 @@ Aplikasi yang ada cenderung bersifat satu arah dan bergantung pada internet. Cel
 |---|---|---|
 | **Pak Budi (45)**, warga bantaran sungai | Android kelas menengah, kuota terbatas, sinyal sering hilang saat hujan deras | Tahu kapan harus bersiap, tahu rute ke titik kumpul, bisa dipakai offline |
 | **Bu Sari (68)**, lansia tinggal sendiri | Sulit bergerak cepat, tidak terbiasa dengan aplikasi | Peringatan jelas (suara/getar/teks besar), dibantu keluarga atau tetangga lewat profil dan kontak darurat |
-| **Rani (24)**, relawan/Karang Taruna | Aktif di lingkungan, punya akun sebagai relawan | Memverifikasi laporan warga, melihat kondisi lapangan |
-| **Pak Hendra**, petugas BPBD/aparat kelurahan | Perlu gambaran situasi wilayah | Dashboard sebaran risiko, laporan, dan titik evakuasi |
+| **Rian (28)**, warga aktif / kepala keluarga | Rutin memantau lingkungan sekitar tempat tinggal | Berbagi dan memvalidasi laporan kondisi jalan/sungai bersama sesama warga |
+| **Dewi (32)**, ibu rumah tangga / pekerja | Mobilitas harian melintasi beberapa kelurahan | Membutuhkan info jalur evakuasi aman dan notifikasi peringatan dini saat cuaca buruk |
 
 ### 4.2 User stories utama
 
 - Sebagai **warga**, saya ingin menerima peringatan sesuai lokasi rumah saya agar tidak mendapat info yang tidak relevan.
 - Sebagai **warga**, saya ingin peta evakuasi tetap bisa dibuka tanpa internet agar saya tidak tersesat saat sinyal hilang.
 - Sebagai **warga**, saya ingin melaporkan kondisi sekitar (jalan terendam, sungai naik) agar tetangga tahu dan menghindarinya.
-- Sebagai **warga**, saya ingin menandai "Saya aman" agar keluarga dan relawan tidak khawatir.
+- Sebagai **warga**, saya ingin menandai "Saya aman" agar keluarga dan warga sekitar tidak khawatir.
 - Sebagai **warga**, saya ingin tahu apa yang harus dilakukan sebelum, saat, dan sesudah tiap jenis bencana.
-- Sebagai **relawan**, saya ingin memverifikasi laporan agar informasi yang tersebar akurat.
-- Sebagai **admin/BPBD**, saya ingin melihat sebaran risiko dan laporan agar bisa memprioritaskan bantuan.
+- Sebagai **warga**, saya ingin mengonfirmasi laporan sesama warga agar informasi yang tersebar akurat dan terverifikasi secara komunitas (crowdsourcing).
+- Sebagai **warga**, saya ingin melihat sebaran risiko bencana dan titik evakuasi agar bisa mengambil tindakan penyelamatan cepat.
 - Sebagai **tamu**, saya ingin tetap menerima peringatan tanpa harus mendaftar.
 
 ---
@@ -125,10 +125,11 @@ Aplikasi yang ada cenderung bersifat satu arah dan bergantung pada internet. Cel
 - Prediksi risiko **banjir** (prioritas), **longsor** (jika waktu cukup)
 - Peringatan **gempa bumi** dan **cuaca ekstrem** yang bersumber dari BMKG
 - Satu wilayah demo dengan data titik evakuasi dan rute yang sudah disiapkan
-- Dashboard admin sederhana (P2)
+- Verifikasi laporan komunitas berbasis konsensus warga (≥ 3 konfirmasi warga)
 
 ### 5.2 Tidak Termasuk (Out of Scope)
 
+- Portal khusus Admin/BPBD dan peran Relawan terpisah (seluruh interaksi disederhanakan menjadi Citizen-Centric murni di mana verifikasi dilakukan secara *crowdsourcing* oleh sesama warga)
 - Memprediksi gempa bumi atau tsunami (secara ilmiah tidak dapat diprediksi; hanya menampilkan peringatan resmi dan peta risiko)
 - Aplikasi native Android/iOS
 - Pengiriman SMS dan cell broadcast (pengembangan lanjutan)
@@ -173,7 +174,7 @@ Cron ambil data cuaca → hitung skor risiko → level naik (mis. Waspada → Si
 Komunitas → "Buat laporan" → pilih tipe, tulis deskripsi, foto, lokasi (otomatis/manual)
         → laporan berstatus "Belum terverifikasi"
         → warga lain di radius menekan "Konfirmasi"
-        → ≥ 3 konfirmasi atau 1 relawan → "Terverifikasi"
+        → ≥ 3 konfirmasi warga sekitar → "Terverifikasi"
         → jika tipe = hambatan jalan → tampil di Peta dan rute menghindarinya (P2)
 ```
 
@@ -196,7 +197,7 @@ Komunitas → "Buat laporan" → pilih tipe, tulis deskripsi, foto, lokasi (otom
 | FR-AUTH-04 | Pengguna tamu dapat meng-upgrade ke akun tanpa kehilangan data (lokasi, langganan push) | P1 |
 | FR-AUTH-05 | Profil menyimpan: nama, lokasi rumah (titik di peta), kontak darurat (maks. 3) | P0 |
 | FR-AUTH-06 | **Profil kerentanan opsional**: lansia, disabilitas, ibu hamil, balita, hewan/ternak. Disimpan hanya dengan persetujuan eksplisit | P2 |
-| FR-AUTH-07 | Peran pengguna: `warga`, `relawan`, `admin`. Peran relawan diberikan admin | P1 |
+| FR-AUTH-07 | Peran pengguna: disederhanakan menjadi `warga` (terdaftar) dan `tamu` (guest mode). Hak pelaporan dan validasi setara bagi seluruh warga | P1 |
 
 **Acceptance criteria (FR-AUTH-03):**
 - Tombol "Masuk sebagai tamu" tersedia di layar pertama.
@@ -216,7 +217,7 @@ Komunitas → "Buat laporan" → pilih tipe, tulis deskripsi, foto, lokasi (otom
 | FR-ALR-07 | Pengguna dapat melihat riwayat peringatan untuk wilayahnya | P1 |
 | FR-ALR-08 | Tombol **"Saya aman"** pada peringatan aktif; status tersimpan dan dapat dibagikan ke kontak darurat | P1 |
 | FR-ALR-09 | Peringatan tersedia dalam bahasa Indonesia; bahasa daerah dan mode suara (text-to-speech) | P2 |
-| FR-ALR-10 | Admin dapat membuat peringatan manual dari dashboard | P2 |
+| FR-ALR-10 | Peringatan darurat otomatis dihasilkan oleh ingest BMKG & kalkulasi risiko mesin per wilayah | P2 |
 
 **Acceptance criteria (FR-ALR-04):**
 - Pengguna di luar wilayah terdampak tidak menerima push.
@@ -264,12 +265,12 @@ Komunitas → "Buat laporan" → pilih tipe, tulis deskripsi, foto, lokasi (otom
 | FR-COM-02 | Pengguna terdaftar dapat membuat laporan: tipe, deskripsi, foto (maks. 1-3), lokasi | P1 |
 | FR-COM-03 | Tipe laporan: sungai naik, banjir/genangan, jalan terputus/terblokir, longsor/retakan tanah, bau belerang/aktivitas gunung, kebutuhan bantuan, lainnya | P1 |
 | FR-COM-04 | Warga lain dapat **mengonfirmasi** atau **menyangkal** laporan | P1 |
-| FR-COM-05 | Laporan menjadi **Terverifikasi** jika dikonfirmasi ≥ 3 warga berbeda atau 1 relawan/admin | P1 |
+| FR-COM-05 | Laporan menjadi **Terverifikasi** jika dikonfirmasi ≥ 3 warga berbeda di sekitar lokasi (konsensus komunitas) | P1 |
 | FR-COM-06 | Laporan kedaluwarsa otomatis (default 24 jam, atau lebih singkat per tipe) | P1 |
 | FR-COM-07 | Pembatasan laporan (rate limit) dan fitur "Laporkan penyalahgunaan" | P1 |
 | FR-COM-08 | Notifikasi push untuk laporan terverifikasi berbahaya dalam radius pengguna | P2 |
-| FR-COM-09 | Tombol "Saya butuh bantuan" yang menandai lokasi pengguna kepada relawan | P2 |
-| FR-COM-10 | Moderasi: relawan/admin dapat menyembunyikan atau menghapus laporan | P1 |
+| FR-COM-09 | Tombol "Saya butuh bantuan" yang menandai koordinat darurat pengguna kepada kontak keluarga dan sesama warga | P2 |
+| FR-COM-10 | Moderasi mandiri & proteksi spam: pembuat laporan dapat menghapus/memperbarui laporannya sendiri (`PATCH /api/laporan/[id]`), dan laporan dengan sangkalan dominan disembunyikan otomatis oleh sistem | P1 |
 
 **Acceptance criteria (FR-COM-01):**
 - Laporan di luar radius pilihan pengguna tidak muncul.
@@ -285,20 +286,21 @@ Komunitas → "Buat laporan" → pilih tipe, tulis deskripsi, foto, lokasi (otom
 | FR-MIT-04 | **Checklist tas siaga bencana** interaktif, progres tersimpan di perangkat | P1 |
 | FR-MIT-05 | Konten mitigasi dapat dibaca offline (di-cache) | P1 |
 | FR-MIT-06 | Dari layar peringatan, tersedia tautan langsung ke panduan "Saat" untuk bencana terkait | P1 |
-| FR-MIT-07 | Pengelolaan konten melalui dashboard admin (CMS sederhana) | P2 |
+| FR-MIT-07 | Pengelolaan konten mitigasi terstruktur berbasis kurasi data resmi BNPB/BMKG (dikelola lewat dataset statis teruji) | P2 |
 
 > Konten mitigasi harus merujuk pada sumber resmi (BNPB, BMKG, PVMBG, Kementerian Kesehatan) dan mencantumkan sumbernya.
 
-### 7.7 Dashboard Admin/BPBD
+### 7.7 Penyederhanaan Peran (Admin & Relawan Dihapus)
+
+Berdasarkan kesepakatan produk, sistem mengadopsi model **100% Citizen-Centric (Desentralisasi Komunitas)**. Dashboard admin dan peran relawan ditiadakan guna mempercepat respons tanpa bottleneck verifikasi manual satu orang/petugas.
 
 | ID | Kebutuhan | Prioritas |
 |---|---|---|
-| FR-ADM-01 | Halaman `/admin` hanya dapat diakses peran `admin` dan `relawan` | P2 |
-| FR-ADM-02 | Peta sebaran level risiko per wilayah dan laporan komunitas aktif | P2 |
-| FR-ADM-03 | Daftar warga yang menandai "Saya butuh bantuan" dan (dengan persetujuan) warga rentan di wilayahnya | P2 |
-| FR-ADM-04 | Kelola titik evakuasi (tambah, ubah, nonaktifkan) | P2 |
-| FR-ADM-05 | Moderasi laporan dan penunjukan relawan | P2 |
-| FR-ADM-06 | Kirim peringatan manual | P2 |
+| FR-ROLE-01 | Model peran tunggal: hanya ada peran `warga` (terdaftar) dan mode `tamu` (tanpa akun). Semua warga memiliki bobot setara | P1 |
+| FR-ROLE-02 | Verifikasi laporan berbasis konsensus crowdsourcing warga (ambang batas otomatis: minimal 3 konfirmasi warga di radius sekitar) | P1 |
+| FR-ROLE-03 | Moderasi laporan terdistribusi: penyangkalan massal (downvote) otomatis menurunkan visibilitas laporan hoaks | P1 |
+| FR-ROLE-04 | Pemilik laporan memiliki kontrol penuh untuk mengubah status atau menghapus laporan miliknya sendiri | P1 |
+| FR-ROLE-05 | Pemantauan keselamatan mandiri: agregasi status "Saya aman" & "Butuh bantuan" terbuka untuk visibilitas komunitas | P1 |
 
 ### 7.8 PWA dan Offline
 
@@ -402,7 +404,7 @@ export function keLevel(skor: number): Level {
 ### 8.7 Kalibrasi (pasca-MVP)
 
 - Simpan setiap hasil skor beserta faktor (`risk_assessments`) untuk dibandingkan dengan kejadian nyata.
-- Validasi ambang dengan BPBD/relawan setempat.
+- Validasi ambang dengan data historis kejadian bencana dan evaluasi lapangan berkala.
 - Pengembangan lanjutan: model ML terpisah (mis. FastAPI) setelah data historis cukup.
 
 ---
@@ -489,7 +491,6 @@ src/
 │  │  ├─ mitigasi/[bencana]/
 │  │  └─ profil/
 │  ├─ peringatan/[id]/          # layar peringatan penuh
-│  ├─ admin/                    # dashboard BPBD
 │  ├─ offline/page.tsx          # fallback offline
 │  └─ api/
 │     ├─ cron/peringatan/route.ts
@@ -551,7 +552,7 @@ create extension if not exists postgis;
 
 create type hazard_type as enum ('banjir','longsor','gempa','tsunami','gunung_api','karhutla','cuaca_ekstrem');
 create type risk_level  as enum ('aman','waspada','siaga','awas');
-create type user_role   as enum ('warga','relawan','admin');
+create type user_role   as enum ('warga');
 
 create table regions (
   id uuid primary key default gen_random_uuid(),
@@ -682,11 +683,11 @@ order by created_at desc;
 
 | Tabel | Baca | Tulis |
 |---|---|---|
-| `profiles` | Pemilik; admin/relawan hanya untuk data yang diizinkan | Pemilik |
-| `regions`, `evacuation_*`, `alerts`, `mitigation_contents` | Publik | Admin |
-| `community_reports` | Publik (kecuali `disembunyikan`) | Pengguna terdaftar (milik sendiri); moderasi oleh relawan/admin |
-| `report_confirmations` | Pemilik; agregat lewat kolom `konfirmasi_count` | Pengguna terdaftar, satu suara per laporan |
-| `safety_status` | Pemilik; kontak darurat/relawan sesuai consent | Pemilik |
+| `profiles` | Pemilik | Pemilik |
+| `regions`, `evacuation_*`, `alerts`, `mitigation_contents` | Publik | Service Role (Cron/Seed) |
+| `community_reports` | Publik (kecuali `disembunyikan`) | Pengguna terdaftar (milik sendiri); Update/Hapus oleh Pemilik |
+| `report_confirmations` | Publik / Agregat | Pengguna terdaftar, satu suara per laporan |
+| `safety_status` | Publik / Kontak darurat | Pemilik |
 | `push_subscriptions` | Server saja (service role) | Pemilik lewat endpoint |
 
 ---
@@ -706,11 +707,10 @@ Semua endpoint bertipe JSON dan divalidasi dengan Zod.
 | GET | `/api/laporan?lat=&lng=&radius_km=` | Laporan dalam radius | Publik |
 | POST | `/api/laporan` | Buat laporan | Terdaftar |
 | POST | `/api/laporan/[id]/konfirmasi` | Konfirmasi/sangkal laporan | Terdaftar |
-| PATCH | `/api/laporan/[id]` | Moderasi (sembunyikan/tolak) | Relawan/Admin |
+| PATCH | `/api/laporan/[id]` | Perbarui / tutup laporan | Pemilik Laporan |
 | POST | `/api/push/subscribe` | Simpan langganan push | Tamu/Terdaftar |
 | DELETE | `/api/push/subscribe` | Hapus langganan push | Tamu/Terdaftar |
 | POST | `/api/status-aman` | Set status "Saya aman"/"Butuh bantuan" | Tamu/Terdaftar |
-| POST | `/api/admin/peringatan` | Buat peringatan manual | Admin |
 
 **Contoh respons `GET /api/risiko`:**
 
@@ -759,7 +759,7 @@ Semua endpoint bertipe JSON dan divalidasi dengan Zod.
 
 - Lokasi dan data kerentanan diperlakukan sebagai data sensitif.
 - Minta persetujuan eksplisit dan jelaskan tujuan penggunaan sebelum mengumpulkan lokasi dan profil kerentanan.
-- Profil kerentanan **opsional** dan hanya dapat dilihat relawan/BPBD jika pengguna menyetujui.
+- Profil kerentanan **opsional** dan hanya dapat dilihat keluarga / tim evakuasi darurat jika pengguna menyetujui.
 - Lokasi di laporan publik dibulatkan/diburamkan (mis. ± 50-100 m) agar tidak membuka alamat persis.
 - Pengguna dapat mengekspor dan menghapus datanya.
 - Kebijakan privasi dan syarat penggunaan wajib tersedia di aplikasi. Tinjau kembali dengan pihak yang kompeten sebelum peluncuran nyata.
@@ -817,7 +817,7 @@ Peringatan **bukan tab**: muncul sebagai push, banner, dan layar penuh otomatis.
 
 ### 15.4 Daftar halaman
 
-`/` (onboarding), `/login`, `/register`, `/beranda`, `/peta`, `/komunitas`, `/komunitas/baru`, `/mitigasi`, `/mitigasi/[bencana]`, `/mitigasi/tas-siaga`, `/peringatan/[id]`, `/profil`, `/offline`, `/admin/*`.
+`/` (onboarding), `/login`, `/register`, `/beranda`, `/peta`, `/komunitas`, `/komunitas/baru`, `/mitigasi`, `/mitigasi/[bencana]`, `/mitigasi/tas-siaga`, `/peringatan/[id]`, `/profil`, `/offline`.
 
 ---
 
@@ -866,8 +866,8 @@ Peringatan **bukan tab**: muncul sebagai push, banner, dan layar penuh otomatis.
 | **3** | Peringatan dan Prediksi | Ingest BMKG, skor risiko banjir, Web Push, layar peringatan penuh, GitHub Actions cron |
 | **4** | Komunitas, Offline, Finalisasi | Laporan + konfirmasi + verifikasi, peta offline (PMTiles), pengujian di perangkat, perbaikan bug, persiapan pitch dan demo |
 
-**Jika waktu mepet, korbankan (urut dari pertama):** dashboard admin, profil kerentanan, prediksi longsor, rute dinamis, bahasa daerah.
-**Jangan dikorbankan:** peta/rute offline dan alur demo end-to-end.
+**Jika waktu mepet, korbankan (urut dari pertama):** profil kerentanan, prediksi longsor, rute dinamis, bahasa daerah.
+**Jangan dikorbankan:** peta/rute offline, verifikasi konsensus warga, dan alur demo end-to-end.
 
 ---
 
@@ -878,9 +878,9 @@ Peringatan **bukan tab**: muncul sebagai push, banner, dan layar penuh otomatis.
 3. Picu **data hujan simulasi** untuk wilayah demo → skor banjir naik ke **Siaga**.
 4. Push masuk: layar peringatan penuh tampil dengan format Apa/Di mana/Seberapa parah/Lakukan ini.
 5. Aktifkan **mode pesawat**, buka Peta → peta, titik evakuasi, dan rute tetap tampil.
-6. Nyalakan internet, buat laporan "Jalan A terendam" dari akun kedua → akun ketiga mengonfirmasi → status **Terverifikasi** dan muncul di peta.
+6. Nyalakan internet, buat laporan "Jalan A terendam" dari akun kedua → akun ketiga mengonfirmasi (mencapai 3 konfirmasi warga) → status otomatis **Terverifikasi** dan muncul di peta.
 7. Tekan **"Saya aman"**.
-8. (Opsional) Tunjukkan dashboard admin yang menampilkan sebaran risiko dan laporan.
+8. (Opsional) Tunjukkan konsensus verifikasi crowdsourcing 3 warga sekitar secara realtime.
 
 > Siapkan mode demo dengan data simulasi dan data fallback agar demo tidak bergantung pada kondisi cuaca dan ketersediaan API pihak ketiga. Katakan secara jujur bahwa data demo disimulasikan.
 
@@ -895,11 +895,11 @@ Peringatan **bukan tab**: muncul sebagai push, banner, dan layar penuh otomatis.
 | R3 | Web Push tidak andal (terutama iOS) | Sedang | Tinggi | Banner dalam aplikasi, petunjuk install, jujur soal batasan, native sebagai pengembangan lanjutan |
 | R4 | Cron GitHub Actions tertunda | Sedang | Sedang | Interval aman, tampilkan waktu pembaruan terakhir |
 | R5 | Skor prediksi dianggap klaim ilmiah | Tinggi | Sedang | Label "estimasi", bobot dijelaskan, hanya banjir/longsor, tidak ada prediksi gempa |
-| R6 | Hoaks dan spam lewat laporan komunitas | Tinggi | Sedang | Verifikasi multi-warga, rate limit, moderasi, laporan belum terverifikasi tidak memicu push massal |
+| R6 | Hoaks dan spam lewat laporan komunitas | Tinggi | Sedang | Verifikasi multi-warga, rate limit, moderasi mandiri, laporan belum terverifikasi tidak memicu push massal |
 | R7 | Kebocoran data lokasi/kerentanan | Tinggi | Rendah | RLS, consent, pembulatan lokasi, minimasi data |
 | R8 | Waktu pengerjaan tidak cukup | Tinggi | Sedang | Prioritas P0/P1/P2, wilayah dan bencana demo dibatasi |
 | R9 | Batas tier gratis (Supabase/Vercel/Open-Meteo) terlampaui | Rendah | Rendah | Cache, batasi frekuensi, pantau penggunaan |
-| R10 | Data titik evakuasi tidak akurat | Tinggi | Sedang | Validasi lapangan/BPBD untuk wilayah demo, tampilkan tanggal verifikasi |
+| R10 | Data titik evakuasi tidak akurat | Tinggi | Sedang | Validasi lapangan/data resmi wilayah untuk demo, tampilkan tanggal verifikasi |
 
 ---
 
@@ -925,7 +925,7 @@ Peringatan **bukan tab**: muncul sebagai push, banner, dan layar penuh otomatis.
 | Q1 | Wilayah demo yang dipilih (kelurahan/desa) dan datanya | [ISI] | Minggu 1 |
 | Q2 | Sumber resmi batas wilayah (poligon) dan lisensinya | [ISI] | Minggu 1 |
 | Q3 | Apakah data tinggi muka air tersedia untuk wilayah demo? | [ISI] | Minggu 1 |
-| Q4 | Akses ke BPBD/relawan untuk validasi titik evakuasi dan ambang risiko | [ISI] | Minggu 2 |
+| Q4 | Akses ke data peta/BPBD setempat untuk validasi titik evakuasi dan ambang risiko | [ISI] | Minggu 2 |
 | Q5 | Nama final aplikasi dan identitas visual | [ISI] | Minggu 1 |
 | Q6 | Sumber dan penulis konten mitigasi (rujukan resmi) | [ISI] | Minggu 2 |
 

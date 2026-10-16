@@ -13,7 +13,5 @@ export function getUserRoleLabel(
   isGuest?: boolean
 ): string {
   if (isGuest || user?.is_anonymous) return "Mode Tamu";
-  if (user?.role === "relawan") return "Relawan Siaga";
-  if (user?.role === "admin") return "Admin Wilayah";
-  return "Pengguna Warga";
+  return "Warga Siaga";
 }

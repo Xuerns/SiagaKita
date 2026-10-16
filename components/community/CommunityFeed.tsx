@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CommunityReport } from "@/types";
 import { VerificationBadge } from "../ui/Badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CommunityFeedProps {
   reports: CommunityReport[];
@@ -202,7 +203,28 @@ export function CommunityFeed({
           </div>
         ))}
 
-        {filteredReports.length === 0 && (
+        {isRefreshing && reports.length === 0 ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-3 animate-pulse"
+              >
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-20 rounded-md" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </div>
+                <Skeleton className="h-5 w-3/4 rounded-[6px]" />
+                <Skeleton className="h-3.5 w-full rounded-[4px]" />
+                <Skeleton className="h-3.5 w-2/3 rounded-[4px]" />
+                <div className="pt-3 border-t border-[#F1F4F2] flex justify-between items-center">
+                  <Skeleton className="h-3 w-28 rounded-[4px]" />
+                  <Skeleton className="h-7 w-20 rounded-[8px]" />
+                </div>
+              </div>
+            ))}
+          </>
+        ) : filteredReports.length === 0 ? (
           <div className="col-span-full py-12 text-center bg-white rounded-[16px] border border-[#E6EBE8] p-8 flex flex-col items-center">
             <AlertCircle className="w-8 h-8 text-[#929D96] mb-2" />
             <h4 className="text-sm font-bold text-[#17211D]">Belum Ada Laporan</h4>
@@ -220,7 +242,7 @@ export function CommunityFeed({
               </button>
             )}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Lightbox Modal Foto Lapangan */}

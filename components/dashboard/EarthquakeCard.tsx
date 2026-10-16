@@ -14,6 +14,7 @@ import {
   Compass,
   AlertTriangle
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EarthquakeData } from "@/types";
 
 interface EarthquakeCardProps {
@@ -34,13 +35,24 @@ export function EarthquakeCard({
 
   if (isLoading || !earthquake) {
     return (
-      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] animate-pulse">
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-32 bg-slate-200 rounded"></div>
-          <div className="h-4 w-16 bg-slate-200 rounded"></div>
+      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] space-y-3 animate-fadeIn">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-6 rounded-[6px]" />
+            <Skeleton className="h-4 w-36 rounded-[4px]" />
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full" />
         </div>
-        <div className="h-14 bg-slate-100 rounded-[12px] mb-3"></div>
-        <div className="h-4 w-48 bg-slate-200 rounded"></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y border-[#F1F4F2]">
+          <Skeleton className="h-10 rounded-[8px]" />
+          <Skeleton className="h-10 rounded-[8px]" />
+          <Skeleton className="h-10 rounded-[8px]" />
+          <Skeleton className="h-10 rounded-[8px]" />
+        </div>
+        <div className="flex justify-between items-center pt-1">
+          <Skeleton className="h-3 w-40 rounded-[4px]" />
+          <Skeleton className="h-7 w-24 rounded-[8px]" />
+        </div>
       </div>
     );
   }

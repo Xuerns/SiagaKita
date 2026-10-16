@@ -14,7 +14,6 @@ import { DesktopHomeView } from "@/components/dashboard/DesktopHomeView";
 import { DesktopMapView } from "@/components/map/DesktopMapView";
 import { DesktopProfileView } from "@/components/profile/DesktopProfileView";
 import { DeleteAccountModal } from "@/components/profile/DeleteAccountModal";
-import { EmergencyWarningView } from "@/components/emergency/EmergencyWarningView";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CreateReportModal } from "@/components/community/CreateReportModal";
 import { MitigationGuide } from "@/components/mitigation/MitigationGuide";
@@ -32,12 +31,12 @@ import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { RiskAlertModal } from "@/components/ui/RiskAlertModal";
 import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
 import { useAuth } from "@/lib/context/AuthContext";
+import { DashboardShellSkeleton } from "@/components/skeletons";
 import { LoginReminderOverlay } from "@/components/auth/LoginReminderOverlay";
 import {
   mockCurrentWeather,
   mockForecast5Days,
   mockActiveWarning,
-  mockEmergencyFullWarning,
   mockCommunityReports
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning, EarthquakeData } from "@/types";
@@ -75,6 +74,21 @@ export default function SiagaKitaApp() {
       setSelectedPoint(currentEvacuationPoints[0]);
     }
   }, [currentEvacuationPoints]);
+
+  // Sinkronisasi status koneksi online/offline secara dinamis dari browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
 
   // BMKG Weather States
   const [currentWeather, setCurrentWeather] = useState<WeatherCurrent>(mockCurrentWeather);
@@ -325,7 +339,6 @@ export default function SiagaKitaApp() {
 
   // Modals & Overlays
   const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
-  const [showEmergencyFullscreen, setShowEmergencyFullscreen] = useState<boolean>(false);
   const [showCreateReportModal, setShowCreateReportModal] = useState<boolean>(false);
   const [showLoginReminderModal, setShowLoginReminderModal] = useState<boolean>(false);
   const [showSayaAmanModal, setShowSayaAmanModal] = useState<boolean>(false);
@@ -561,29 +574,9 @@ export default function SiagaKitaApp() {
     }
   };
 
-  // If Fullscreen Emergency Warning is triggered
-  if (showEmergencyFullscreen) {
-    return (
-      <EmergencyWarningView
-        warning={mockEmergencyFullWarning}
-        onBack={() => setShowEmergencyFullscreen(false)}
-        onNavigateToEvacuationRoute={() => {
-          setShowEmergencyFullscreen(false);
-          setCurrentTab("peta");
-          setMobileTab("peta");
-          handleStartRouteNavigation();
-        }}
-        onTriggerSayaAman={() => {
-          setShowEmergencyFullscreen(false);
-          setShowSayaAmanModal(true);
-        }}
-        onOpenMitigationGuide={() => {
-          setShowEmergencyFullscreen(false);
-          setCurrentTab("mitigasi");
-          setMobileTab("mitigasi");
-        }}
-      />
-    );
+  // Initial loading state while verifying user session
+  if (isAuthLoading) {
+    return <DashboardShellSkeleton />;
   }
 
   return (
@@ -735,8 +728,29 @@ export default function SiagaKitaApp() {
                 onOpenNotifications={() => setShowPushNotification(true)}
               />
 
+              {/* Emergency Offline Banner */}
+              {!isOnline && (
+                <div className="bg-[#FEF8E7] border-b border-[#FCE39E] px-4 py-2.5 text-xs text-[#92400E] flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#D97706] animate-pulse shrink-0" />
+                    <div>
+                      <span className="font-bold">Mode Darurat Offline: </span>
+                      <span>Koneksi internet terputus. Peta dan titik evakuasi yang tersimpan tetap aktif & dapat diakses.</span>
+                    </div>
+                  </div>
+                  {currentTab !== "peta" && (
+                    <button
+                      onClick={() => setCurrentTab("peta")}
+                      className="px-3 py-1 bg-[#176B4D] hover:bg-[#104A35] text-white font-bold rounded-[8px] transition-colors cursor-pointer text-xs shrink-0"
+                    >
+                      Buka Peta Evakuasi Sekarang →
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Main Page Body */}
-              <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+              <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
                 {/* SCREEN A: DESKTOP BERANDA (DASHBOARD) */}
                 {currentTab === "beranda" && (
                   <DesktopHomeView
@@ -749,7 +763,11 @@ export default function SiagaKitaApp() {
                     currentLocation={currentLocation}
                     currentRiskLevel={currentRisk.level}
                     dynamicWarning={dynamicWarning}
-                    onOpenWarning={() => setShowEmergencyFullscreen(true)}
+                    onOpenWarning={() => {
+                      if (dynamicWarning.level !== "Aman") {
+                        setShowRiskAlertModal(true);
+                      }
+                    }}
                     latestEarthquake={latestEarthquake}
                     isLoadingEarthquake={isLoadingEarthquake}
                     forecastDays={forecastDays}
@@ -853,6 +871,19 @@ export default function SiagaKitaApp() {
               </main>
             </div>
           </div>
+
+          {/* Mobile Bottom Navigation (Hanya tampil pada viewport mobile < md) */}
+          <MobileBottomNav
+            currentTab={currentTab}
+            onSelectTab={(tab) => {
+              if (tab === "tokens") {
+                setViewportMode("tokens");
+              } else {
+                setCurrentTab(tab);
+              }
+            }}
+            warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
+          />
         </SidebarProvider>
       )}
 
@@ -893,13 +924,7 @@ export default function SiagaKitaApp() {
           warning={dynamicWarning}
           onOpenWarning={() => {
             setShowPushNotification(false);
-            // Klik dari notifikasi → tampilkan detail lengkap
-            const level = currentRisk.level;
-            if (level === "siaga" || level === "awas") {
-              setShowRiskAlertModal(true);
-            } else {
-              setShowEmergencyFullscreen(true);
-            }
+            setShowRiskAlertModal(true);
           }}
           onDismiss={() => setShowPushNotification(false)}
         />

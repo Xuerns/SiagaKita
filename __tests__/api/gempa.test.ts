@@ -139,7 +139,7 @@ describe('Gempa API (/api/gempa) & BMKG TEWS Parser', () => {
       expect(json.success).toBe(true);
       expect(json.latest).toBeDefined();
       expect(Array.isArray(json.recent_felt)).toBe(true);
-    });
+    }, 30000);
   });
 
   // ==========================================

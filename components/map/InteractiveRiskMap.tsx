@@ -8,11 +8,14 @@ import {
   Crosshair, 
   Layers, 
   AlertTriangle,
-  Loader2
+  Loader2,
+  Navigation as NavigationIcon
 } from "lucide-react";
 import { EvacuationPoint, CommunityReport } from "@/types";
 import { getCityCoordinates } from "@/lib/evakuasi";
 import { calculateHaversineDistance, findClosestBMKGRegion } from "@/lib/bmkg";
+import { useLiveGeolocation } from "@/hooks/useLiveGeolocation";
+import { NavigationCompassCard } from "@/components/map/NavigationCompassCard";
 
 interface InteractiveRiskMapProps {
   evacuationPoints: EvacuationPoint[];
@@ -52,6 +55,23 @@ export function InteractiveRiskMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [gpsStatusMsg, setGpsStatusMsg] = useState<string | null>(null);
+  const [isFollowMode, setIsFollowMode] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+
+  // Deteksi status jaringan perangkat (Online / Offline)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOffline(!navigator.onLine);
+      const handleOnline = () => setIsOffline(false);
+      const handleOffline = () => setIsOffline(true);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
 
   // Active city center coordinates
   const cityCoords = getCityCoordinates(locationName);
@@ -67,6 +87,54 @@ export function InteractiveRiskMap({
   const activeLat = isUserInCurrentCity && userCoords ? userCoords.lat : cityCoords.lat;
 
   const selectedPoint = evacuationPoints.find((p) => p.id === selectedPointId) || evacuationPoints[0];
+
+  // Live distance in meters to selected evacuation point (Haversine real-time)
+  const liveDistanceMeters =
+    userCoords && selectedPoint && typeof selectedPoint.lat === "number" && typeof selectedPoint.lng === "number"
+      ? Math.round(
+          calculateHaversineDistance(
+            userCoords.lat,
+            userCoords.lng,
+            selectedPoint.lat,
+            selectedPoint.lng
+          ) * 1000
+        )
+      : null;
+
+  // Live Geolocation Tracking Hook (Continuous Watch Position)
+  const liveGeo = useLiveGeolocation({
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 15000,
+    onLocationUpdate: (newCoords) => {
+      const precise = {
+        lat: newCoords.lat,
+        lng: newCoords.lng,
+        accuracy: newCoords.accuracy,
+      };
+
+      if (onUpdateCoords) {
+        onUpdateCoords(precise);
+      }
+
+      // Jika user marker sudah ada di peta, perbarui posisinya langsung
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLngLat([newCoords.lng, newCoords.lat]);
+      }
+
+      // Jika Follow Mode aktif, geser kamera peta otomatis mengikuti langkah kaki
+      if (isFollowMode && mapRef.current) {
+        mapRef.current.easeTo({
+          center: [newCoords.lng, newCoords.lat],
+          duration: 600,
+        });
+      }
+    },
+    onError: (err) => {
+      setGpsStatusMsg(err);
+      setTimeout(() => setGpsStatusMsg(null), 4000);
+    },
+  });
 
   // 1. Initialize MapLibre with genuine OpenStreetMap tiles
   useEffect(() => {
@@ -288,7 +356,7 @@ export function InteractiveRiskMap({
               const bounds = new maplibregl.LngLatBounds();
               roadCoords.forEach((c: [number, number]) => bounds.extend(c));
               mapRef.current.fitBounds(bounds, {
-                padding: { top: 185, bottom: 90, left: 80, right: 80 },
+                padding: { top: 60, bottom: 60, left: 60, right: 60 },
                 maxZoom: 15.5,
                 duration: 1000,
               });
@@ -395,7 +463,7 @@ export function InteractiveRiskMap({
 
           const markerEl = document.createElement("div");
           markerEl.className = `cursor-pointer flex flex-col items-center select-none ${
-            isSelected ? "z-30" : "z-20"
+            isSelected ? "z-10" : "z-0"
           }`;
 
           // Pin Badge Pill + Circle
@@ -576,13 +644,16 @@ export function InteractiveRiskMap({
 
   // Request High Precision Hardware GPS Fix
   const handlePreciseGPS = useCallback(() => {
-    if (!navigator.geolocation) {
+    if (!liveGeo.isSupported) {
       alert("Browser Anda tidak mendukung deteksi lokasi Geolocation.");
       return;
     }
 
     setIsLocating(true);
     setGpsStatusMsg("Mendeteksi sinyal GPS presisi...");
+
+    // Aktifkan pelacakan pergerakan real-time kontinu
+    liveGeo.startTracking();
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -628,7 +699,7 @@ export function InteractiveRiskMap({
         maximumAge: 0, // Force fresh hardware GPS measurement
       }
     );
-  }, [onSelectCity, onUpdateCoords]);
+  }, [liveGeo, onSelectCity, onUpdateCoords]);
 
   const handleZoomIn = () => {
     if (mapRef.current) mapRef.current.zoomIn();
@@ -638,10 +709,42 @@ export function InteractiveRiskMap({
     if (mapRef.current) mapRef.current.zoomOut();
   };
 
+  // Resize map otomatis saat layout berubah
+  useEffect(() => {
+    if (mapRef.current) {
+      const timer = setTimeout(() => {
+        mapRef.current?.resize();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeLayer, showRoute, isUserInCurrentCity, userCoords, selectedPoint]);
+
   return (
-    <div className="relative w-full h-[580px] bg-[#E9EFEA] rounded-[16px] overflow-hidden border border-[#CDD7D1] shadow-inner select-none">
-      {/* Real MapLibre GL OpenStreetMap Container */}
-      <div ref={mapContainerRef} className="w-full h-full" />
+    <div className="flex flex-col w-full bg-[#E9EFEA] rounded-[16px] overflow-hidden border border-[#CDD7D1] shadow-inner select-none">
+      {/* Navigation Compass Card Header saat rute aktif */}
+      {(activeLayer === "rute" || showRoute) && isUserInCurrentCity && userCoords && selectedPoint && (
+        <div className="p-3 bg-white border-b border-[#CDD7D1] z-20">
+          <NavigationCompassCard
+            selectedPoint={selectedPoint}
+            userCoords={userCoords}
+            distanceMeters={liveDistanceMeters}
+            isFollowMode={isFollowMode}
+            onToggleFollowMode={() => {
+              const nextMode = !isFollowMode;
+              setIsFollowMode(nextMode);
+              if (nextMode && !liveGeo.isTracking) {
+                liveGeo.startTracking();
+              }
+            }}
+            isOffline={isOffline}
+          />
+        </div>
+      )}
+
+      {/* Map Canvas Viewport */}
+      <div className="relative w-full h-[580px]">
+        {/* Real MapLibre GL OpenStreetMap Container */}
+        <div ref={mapContainerRef} className="w-full h-full relative z-0 isolate" />
 
       {/* Loading Overlay while OpenStreetMap Tiles Init */}
       {!mapLoaded && (
@@ -763,6 +866,8 @@ export function InteractiveRiskMap({
         </div>
       </div>
 
+
+
       {/* Floating Map Controls (Top-Right) */}
       <div className="absolute top-4 right-4 flex flex-col gap-1.5 z-10">
         <button
@@ -782,14 +887,35 @@ export function InteractiveRiskMap({
         <button
           onClick={handlePreciseGPS}
           disabled={isLocating}
-          className="w-8 h-8 rounded-[8px] bg-white border border-[#CDD7D1] shadow-sm flex items-center justify-center text-[#2563EB] hover:bg-[#EFF6FF] active:scale-95 transition-all cursor-pointer disabled:opacity-60"
-          title="Kunci GPS Presisi Tinggi"
+          className={`w-8 h-8 rounded-[8px] border shadow-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-60 ${
+            liveGeo.isTracking
+              ? "bg-[#EFF6FF] border-[#3B82F6] text-[#2563EB]"
+              : "bg-white border-[#CDD7D1] text-[#2563EB] hover:bg-[#EFF6FF]"
+          }`}
+          title={liveGeo.isTracking ? "GPS Aktif (Pelacakan Langkah)" : "Kunci GPS Presisi Tinggi"}
         >
           {isLocating ? (
             <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
           ) : (
-            <Crosshair className="w-4 h-4" />
+            <Crosshair className={`w-4 h-4 ${liveGeo.isTracking ? "animate-pulse" : ""}`} />
           )}
+        </button>
+        <button
+          onClick={() => {
+            const nextMode = !isFollowMode;
+            setIsFollowMode(nextMode);
+            if (nextMode && !liveGeo.isTracking) {
+              liveGeo.startTracking();
+            }
+          }}
+          className={`w-8 h-8 rounded-[8px] border shadow-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            isFollowMode
+              ? "bg-[#176B4D] border-[#176B4D] text-white shadow-md"
+              : "bg-white border-[#CDD7D1] text-[#68756E] hover:bg-[#F8FAF9]"
+          }`}
+          title={isFollowMode ? "Matikan Kamera Mengikuti" : "Kamera Otomatis Ikuti Langkah Kaki"}
+        >
+          <NavigationIcon className={`w-4 h-4 ${isFollowMode ? "animate-pulse" : ""}`} />
         </button>
       </div>
 
@@ -798,6 +924,7 @@ export function InteractiveRiskMap({
         <span>MapLibre GL JS</span>
         <span>•</span>
         <span>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="hover:underline text-[#176B4D] font-medium">OpenStreetMap</a> contributors</span>
+      </div>
       </div>
     </div>
   );

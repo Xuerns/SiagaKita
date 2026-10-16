@@ -247,7 +247,7 @@ export function CreateReportModal({
               Laporan Berhasil Terkirim!
             </h4>
             <p className="text-xs text-[#68756E] max-w-sm mx-auto">
-              Laporan Anda sedang menunggu verifikasi oleh relawan lapangan dan BPBD. Terima kasih atas kepedulian Anda.
+              Laporan Anda telah diterbitkan dan akan otomatis berstatus Terverifikasi setelah mendapat konfirmasi dari 3 warga sekitar. Terima kasih atas kepedulian Anda.
             </p>
           </div>
         ) : (

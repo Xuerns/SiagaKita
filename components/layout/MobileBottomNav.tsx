@@ -1,105 +1,121 @@
+"use client";
+
 import React from "react";
 import { Home, Map, FileText, ShieldAlert, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { type NavTab } from "@/components/layout/DesktopSidebar";
 
-export type MobileTab = "beranda" | "peta" | "laporan" | "mitigasi" | "profil";
+export type MobileTab = "beranda" | "peta" | "laporan" | "mitigasi" | "profil" | "pengaturan";
 
-interface MobileBottomNavProps {
-  currentTab: MobileTab;
-  onSelectTab: (tab: MobileTab) => void;
+export interface MobileBottomNavProps {
+  currentTab: NavTab | MobileTab | string;
+  onSelectTab: (tab: any) => void;
   warningCount?: number;
+  className?: string;
 }
+
+interface BottomNavItem {
+  id: "beranda" | "peta" | "laporan" | "mitigasi" | "pengaturan";
+  fallbackId?: "profil";
+  label: string;
+  icon: React.ElementType;
+}
+
+const NAV_ITEMS: BottomNavItem[] = [
+  { id: "beranda", label: "Beranda", icon: Home },
+  { id: "peta", label: "Peta", icon: Map },
+  { id: "laporan", label: "Laporan", icon: FileText },
+  { id: "mitigasi", label: "Mitigasi", icon: ShieldAlert },
+  { id: "pengaturan", fallbackId: "profil", label: "Profil", icon: User },
+];
 
 export function MobileBottomNav({
   currentTab,
   onSelectTab,
-  warningCount = 1,
+  warningCount = 0,
+  className,
 }: MobileBottomNavProps) {
-  const tabs = [
-    { id: "beranda" as MobileTab, label: "Beranda", icon: Home },
-    { id: "peta" as MobileTab, label: "Peta", icon: Map },
-    { id: "laporan" as MobileTab, label: "Laporan", icon: FileText },
-    { id: "mitigasi" as MobileTab, label: "Mitigasi", icon: ShieldAlert },
-    { id: "profil" as MobileTab, label: "Profil", icon: User },
-  ];
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E6EBE8] py-2 px-3 flex items-center justify-around z-40 select-none max-w-[440px] mx-auto shadow-lg">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = currentTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onSelectTab(tab.id)}
-            className={`flex flex-col items-center justify-center flex-1 py-1 transition-all min-h-[44px] ${
-              isActive
-                ? "text-[#176B4D] font-bold"
-                : "text-[#929D96] hover:text-[#17211D]"
-            }`}
-          >
-            <div className="relative">
-              <Icon className={`w-5 h-5 ${isActive ? "text-[#176B4D]" : "text-[#929D96]"}`} />
-              {tab.id === "peta" && warningCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#D64545]" />
+    <nav
+      role="navigation"
+      aria-label="Mobile Navigation"
+      className={cn(
+        "fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E6EBE8] select-none",
+        "shadow-[0_-4px_20px_rgba(0,0,0,0.06)] md:hidden",
+        "pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-1.5 px-2",
+        className
+      )}
+    >
+      <div className="flex items-center justify-around max-w-lg mx-auto w-full">
+        {NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            currentTab === item.id ||
+            (item.fallbackId && currentTab === item.fallbackId);
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                // If caller uses "profil" or "pengaturan", respect both
+                if (item.id === "pengaturan" && currentTab === "profil") {
+                  onSelectTab("profil");
+                } else {
+                  onSelectTab(item.id);
+                }
+              }}
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 py-1 px-1 transition-all rounded-xl",
+                "min-h-[48px] min-w-[48px] active:scale-95 cursor-pointer",
+                isActive
+                  ? "text-[#176B4D]"
+                  : "text-[#68756E] hover:text-[#17211D]"
               )}
-            </div>
-            <span className="text-[10px] mt-1 tracking-tight leading-none">
-              {tab.label}
-            </span>
-          </button>
-        );
-      })}
+            >
+              <div className="relative flex items-center justify-center">
+                <div
+                  className={cn(
+                    "flex items-center justify-center w-9 h-7 rounded-full transition-all duration-200",
+                    isActive ? "bg-[#E5F5EA]" : "bg-transparent"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "w-5 h-5 transition-transform duration-200",
+                      isActive
+                        ? "text-[#176B4D] scale-105 stroke-[2.4]"
+                        : "text-[#68756E] stroke-[1.8]"
+                    )}
+                  />
+                </div>
+
+                {/* Warning dot for Peta */}
+                {item.id === "peta" && warningCount > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#D64545] ring-2 ring-white animate-pulse"
+                    title={`${warningCount} peringatan aktif`}
+                  />
+                )}
+              </div>
+
+              <span
+                className={cn(
+                  "text-[10px] sm:text-[11px] mt-0.5 tracking-tight leading-none transition-colors",
+                  isActive ? "font-bold text-[#176B4D]" : "font-medium text-[#68756E]"
+                )}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }
 
-export function MobileHeader({
-  locationName = "Kota Bogor",
-  onOpenNotifications,
-  onOpenLocationSelector,
-}: {
-  locationName?: string;
-  onOpenNotifications: () => void;
-  onOpenLocationSelector: () => void;
-}) {
-  return (
-    <header className="h-14 bg-white border-b border-[#E6EBE8] px-4 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-[8px] bg-[#176B4D] text-white flex items-center justify-center shadow-sm">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-4 h-4 text-emerald-300"
-          >
-            <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
-            <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />
-          </svg>
-        </div>
-        <span className="text-sm font-bold text-[#17211D]">
-          Siaga<span className="text-[#176B4D]">Kita</span>
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onOpenLocationSelector}
-          className="px-2.5 py-1 bg-[#F8FAF9] border border-[#E6EBE8] rounded-full text-[11px] font-semibold text-[#17211D] flex items-center gap-1"
-        >
-          <span>📍 {locationName}</span>
-        </button>
-
-        <button
-          onClick={onOpenNotifications}
-          className="relative p-2 text-[#68756E] hover:text-[#17211D]"
-        >
-          <span className="text-sm">🔔</span>
-          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#D64545] ring-1 ring-white" />
-        </button>
-      </div>
-    </header>
-  );
-}
+// Re-export MobileHeader from dedicated file for backwards-compatibility
+export { MobileHeader } from "./MobileHeader";
+export type { MobileHeaderProps } from "./MobileHeader";
