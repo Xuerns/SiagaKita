@@ -8,11 +8,14 @@ import {
   Crosshair, 
   Layers, 
   AlertTriangle,
-  Loader2
+  Loader2,
+  Navigation as NavigationIcon
 } from "lucide-react";
 import { EvacuationPoint, CommunityReport } from "@/types";
 import { getCityCoordinates } from "@/lib/evakuasi";
 import { calculateHaversineDistance, findClosestBMKGRegion } from "@/lib/bmkg";
+import { useLiveGeolocation } from "@/hooks/useLiveGeolocation";
+import { NavigationCompassCard } from "@/components/map/NavigationCompassCard";
 
 interface InteractiveRiskMapProps {
   evacuationPoints: EvacuationPoint[];
@@ -52,6 +55,23 @@ export function InteractiveRiskMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [gpsStatusMsg, setGpsStatusMsg] = useState<string | null>(null);
+  const [isFollowMode, setIsFollowMode] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(false);
+
+  // Deteksi status jaringan perangkat (Online / Offline)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOffline(!navigator.onLine);
+      const handleOnline = () => setIsOffline(false);
+      const handleOffline = () => setIsOffline(true);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
 
   // Active city center coordinates
   const cityCoords = getCityCoordinates(locationName);
@@ -67,6 +87,54 @@ export function InteractiveRiskMap({
   const activeLat = isUserInCurrentCity && userCoords ? userCoords.lat : cityCoords.lat;
 
   const selectedPoint = evacuationPoints.find((p) => p.id === selectedPointId) || evacuationPoints[0];
+
+  // Live distance in meters to selected evacuation point (Haversine real-time)
+  const liveDistanceMeters =
+    userCoords && selectedPoint && typeof selectedPoint.lat === "number" && typeof selectedPoint.lng === "number"
+      ? Math.round(
+          calculateHaversineDistance(
+            userCoords.lat,
+            userCoords.lng,
+            selectedPoint.lat,
+            selectedPoint.lng
+          ) * 1000
+        )
+      : null;
+
+  // Live Geolocation Tracking Hook (Continuous Watch Position)
+  const liveGeo = useLiveGeolocation({
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 15000,
+    onLocationUpdate: (newCoords) => {
+      const precise = {
+        lat: newCoords.lat,
+        lng: newCoords.lng,
+        accuracy: newCoords.accuracy,
+      };
+
+      if (onUpdateCoords) {
+        onUpdateCoords(precise);
+      }
+
+      // Jika user marker sudah ada di peta, perbarui posisinya langsung
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLngLat([newCoords.lng, newCoords.lat]);
+      }
+
+      // Jika Follow Mode aktif, geser kamera peta otomatis mengikuti langkah kaki
+      if (isFollowMode && mapRef.current) {
+        mapRef.current.easeTo({
+          center: [newCoords.lng, newCoords.lat],
+          duration: 600,
+        });
+      }
+    },
+    onError: (err) => {
+      setGpsStatusMsg(err);
+      setTimeout(() => setGpsStatusMsg(null), 4000);
+    },
+  });
 
   // 1. Initialize MapLibre with genuine OpenStreetMap tiles
   useEffect(() => {
@@ -576,13 +644,16 @@ export function InteractiveRiskMap({
 
   // Request High Precision Hardware GPS Fix
   const handlePreciseGPS = useCallback(() => {
-    if (!navigator.geolocation) {
+    if (!liveGeo.isSupported) {
       alert("Browser Anda tidak mendukung deteksi lokasi Geolocation.");
       return;
     }
 
     setIsLocating(true);
     setGpsStatusMsg("Mendeteksi sinyal GPS presisi...");
+
+    // Aktifkan pelacakan pergerakan real-time kontinu
+    liveGeo.startTracking();
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -628,7 +699,7 @@ export function InteractiveRiskMap({
         maximumAge: 0, // Force fresh hardware GPS measurement
       }
     );
-  }, [onSelectCity, onUpdateCoords]);
+  }, [liveGeo, onSelectCity, onUpdateCoords]);
 
   const handleZoomIn = () => {
     if (mapRef.current) mapRef.current.zoomIn();
@@ -763,6 +834,26 @@ export function InteractiveRiskMap({
         </div>
       </div>
 
+      {/* Navigation Compass Card saat melihat rute atau menavigasi ke shelter */}
+      {(activeLayer === "rute" || showRoute) && isUserInCurrentCity && userCoords && selectedPoint && (
+        <div className="absolute top-4 left-4 right-14 sm:right-auto sm:max-w-xs md:max-w-sm z-20">
+          <NavigationCompassCard
+            selectedPoint={selectedPoint}
+            userCoords={userCoords}
+            distanceMeters={liveDistanceMeters}
+            isFollowMode={isFollowMode}
+            onToggleFollowMode={() => {
+              const nextMode = !isFollowMode;
+              setIsFollowMode(nextMode);
+              if (nextMode && !liveGeo.isTracking) {
+                liveGeo.startTracking();
+              }
+            }}
+            isOffline={isOffline}
+          />
+        </div>
+      )}
+
       {/* Floating Map Controls (Top-Right) */}
       <div className="absolute top-4 right-4 flex flex-col gap-1.5 z-10">
         <button
@@ -782,14 +873,35 @@ export function InteractiveRiskMap({
         <button
           onClick={handlePreciseGPS}
           disabled={isLocating}
-          className="w-8 h-8 rounded-[8px] bg-white border border-[#CDD7D1] shadow-sm flex items-center justify-center text-[#2563EB] hover:bg-[#EFF6FF] active:scale-95 transition-all cursor-pointer disabled:opacity-60"
-          title="Kunci GPS Presisi Tinggi"
+          className={`w-8 h-8 rounded-[8px] border shadow-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 disabled:opacity-60 ${
+            liveGeo.isTracking
+              ? "bg-[#EFF6FF] border-[#3B82F6] text-[#2563EB]"
+              : "bg-white border-[#CDD7D1] text-[#2563EB] hover:bg-[#EFF6FF]"
+          }`}
+          title={liveGeo.isTracking ? "GPS Aktif (Pelacakan Langkah)" : "Kunci GPS Presisi Tinggi"}
         >
           {isLocating ? (
             <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
           ) : (
-            <Crosshair className="w-4 h-4" />
+            <Crosshair className={`w-4 h-4 ${liveGeo.isTracking ? "animate-pulse" : ""}`} />
           )}
+        </button>
+        <button
+          onClick={() => {
+            const nextMode = !isFollowMode;
+            setIsFollowMode(nextMode);
+            if (nextMode && !liveGeo.isTracking) {
+              liveGeo.startTracking();
+            }
+          }}
+          className={`w-8 h-8 rounded-[8px] border shadow-sm flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            isFollowMode
+              ? "bg-[#176B4D] border-[#176B4D] text-white shadow-md"
+              : "bg-white border-[#CDD7D1] text-[#68756E] hover:bg-[#F8FAF9]"
+          }`}
+          title={isFollowMode ? "Matikan Kamera Mengikuti" : "Kamera Otomatis Ikuti Langkah Kaki"}
+        >
+          <NavigationIcon className={`w-4 h-4 ${isFollowMode ? "animate-pulse" : ""}`} />
         </button>
       </div>
 
