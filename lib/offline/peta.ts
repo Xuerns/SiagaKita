@@ -96,6 +96,11 @@ export async function downloadRegionalMap(
 
   // 3. Simpan info status ke IndexedDB metadata
   await saveMetadata(OFFLINE_MAP_METADATA_KEY, packageInfo);
+  await saveMetadata("offline_map_downloaded", {
+    count: points.length,
+    downloaded_at: new Date().toISOString(),
+    region: regionName,
+  });
 
   return packageInfo;
 }
@@ -114,4 +119,5 @@ export async function removeRegionalMap(): Promise<void> {
 
   await clearOfflineEvacuationPoints();
   await removeMetadata(OFFLINE_MAP_METADATA_KEY);
+  await removeMetadata("offline_map_downloaded");
 }
