@@ -16,7 +16,6 @@ import { DesktopProfileView } from "@/components/profile/DesktopProfileView";
 import { DeleteAccountModal } from "@/components/profile/DeleteAccountModal";
 import { OfflineMapModal } from "@/components/map/OfflineMapModal";
 import { getMetadata } from "@/lib/offline/db";
-import { EmergencyWarningView } from "@/components/emergency/EmergencyWarningView";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CreateReportModal } from "@/components/community/CreateReportModal";
 import { MitigationGuide } from "@/components/mitigation/MitigationGuide";
@@ -40,7 +39,6 @@ import {
   mockCurrentWeather,
   mockForecast5Days,
   mockActiveWarning,
-  mockEmergencyFullWarning,
   mockCommunityReports
 } from "@/data/mockDisasterData";
 import { EvacuationPoint, CommunityReport, WeatherCurrent, ForecastDay, ActiveWarning, EarthquakeData } from "@/types";
@@ -342,7 +340,6 @@ export default function SiagaKitaApp() {
 
   // Modals & Overlays
   const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
-  const [showEmergencyFullscreen, setShowEmergencyFullscreen] = useState<boolean>(false);
   const [showOfflineModal, setShowOfflineModal] = useState<boolean>(false);
   const [showCreateReportModal, setShowCreateReportModal] = useState<boolean>(false);
   const [showLoginReminderModal, setShowLoginReminderModal] = useState<boolean>(false);
@@ -579,31 +576,6 @@ export default function SiagaKitaApp() {
     }
   };
 
-  // If Fullscreen Emergency Warning is triggered
-  if (showEmergencyFullscreen) {
-    return (
-      <EmergencyWarningView
-        warning={mockEmergencyFullWarning}
-        onBack={() => setShowEmergencyFullscreen(false)}
-        onNavigateToEvacuationRoute={() => {
-          setShowEmergencyFullscreen(false);
-          setCurrentTab("peta");
-          setMobileTab("peta");
-          handleStartRouteNavigation();
-        }}
-        onTriggerSayaAman={() => {
-          setShowEmergencyFullscreen(false);
-          setShowSayaAmanModal(true);
-        }}
-        onOpenMitigationGuide={() => {
-          setShowEmergencyFullscreen(false);
-          setCurrentTab("mitigasi");
-          setMobileTab("mitigasi");
-        }}
-      />
-    );
-  }
-
   // Initial loading state while verifying user session
   if (isAuthLoading) {
     return <DashboardShellSkeleton />;
@@ -774,7 +746,11 @@ export default function SiagaKitaApp() {
                     currentLocation={currentLocation}
                     currentRiskLevel={currentRisk.level}
                     dynamicWarning={dynamicWarning}
-                    onOpenWarning={() => setShowEmergencyFullscreen(true)}
+                    onOpenWarning={() => {
+                      if (dynamicWarning.level !== "Aman") {
+                        setShowRiskAlertModal(true);
+                      }
+                    }}
                     latestEarthquake={latestEarthquake}
                     isLoadingEarthquake={isLoadingEarthquake}
                     forecastDays={forecastDays}
@@ -943,13 +919,7 @@ export default function SiagaKitaApp() {
           warning={dynamicWarning}
           onOpenWarning={() => {
             setShowPushNotification(false);
-            // Klik dari notifikasi → tampilkan detail lengkap
-            const level = currentRisk.level;
-            if (level === "siaga" || level === "awas") {
-              setShowRiskAlertModal(true);
-            } else {
-              setShowEmergencyFullscreen(true);
-            }
+            setShowRiskAlertModal(true);
           }}
           onDismiss={() => setShowPushNotification(false)}
         />

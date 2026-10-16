@@ -74,28 +74,6 @@ export const mockActiveWarning: ActiveWarning = {
   isDemoSimulation: false,
 };
 
-export const mockEmergencyFullWarning: ActiveWarning = {
-  id: "warn-darurat",
-  title: "Banjir Bandang Berpotensi Terjadi",
-  hazardType: "Banjir Bandang",
-  level: "Awas",
-  affectedArea: "Kec. Bogor Selatan, Kota Bogor",
-  validPeriod: "14 Okt 2026, 10:20 – 16:20 WIB",
-  issuedTime: "14 Okt 2026 · 10.20 WIB",
-  source: "Simulasi",
-  description: "PERINGATAN DARURAT: Luapan air ekstrem terdeteksi di hulu sungai. Evakuasi segera area bantaran sungai.",
-  whatHappened: "Curah hujan ekstrem di hulu meningkatkan debit air secara tiba-tiba melampaui ambang batas bahaya.",
-  whereLocation: "Wilayah bantaran Sungai Ciliwung Kec. Bogor Selatan (Batutulis, Cipaku, Pamoyanan).",
-  howSevere: "Level Awas (Sangat Tinggi). Potensi arus deras dan genangan lebih dari 1.5 meter.",
-  instructions: [
-    "Segera menuju titik evakuasi terdekat dan hindari perjalanan di area rawan.",
-    "Matikan aliran listrik dan gas di dalam rumah sebelum meninggalkan tempat.",
-    "Bawa tas siaga yang sudah dipersiapkan.",
-    "Ikuti arahan petugas BPBD dan aparat setempat di posko lapangan.",
-  ],
-  isDemoSimulation: true,
-};
-
 export const mockCommunityReports: CommunityReport[] = [
   {
     id: "rep-1",

@@ -4,7 +4,7 @@ import { ActiveWarning } from "@/types";
 
 interface WarningCardProps {
   warning: ActiveWarning;
-  onOpenWarning: () => void;
+  onOpenWarning?: () => void;
 }
 
 export function WarningCard({ warning, onOpenWarning }: WarningCardProps) {
@@ -59,15 +59,15 @@ export function WarningCard({ warning, onOpenWarning }: WarningCardProps) {
           Sumber: {warning.source}
         </span>
 
-        <button
-          onClick={onOpenWarning}
-          className={`text-xs font-semibold flex items-center gap-1 group-hover:gap-1.5 transition-all hover:underline ${
-            isSafe ? "text-[#176B4D]" : "text-[#D64545]"
-          }`}
-        >
-          <span>{isSafe ? "Info mitigasi" : "Lihat detail"}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        {!isSafe && onOpenWarning && (
+          <button
+            onClick={onOpenWarning}
+            className="text-xs font-semibold flex items-center gap-1 group-hover:gap-1.5 transition-all hover:underline text-[#D64545]"
+          >
+            <span>Lihat detail</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export interface DesktopHomeViewProps {
   currentLocation: string;
   currentRiskLevel: RiskLevel;
   dynamicWarning: ActiveWarning;
-  onOpenWarning: () => void;
+  onOpenWarning?: () => void;
   latestEarthquake: EarthquakeData | null;
   isLoadingEarthquake: boolean;
   forecastDays: ForecastDay[];
