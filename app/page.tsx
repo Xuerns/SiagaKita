@@ -14,8 +14,6 @@ import { DesktopHomeView } from "@/components/dashboard/DesktopHomeView";
 import { DesktopMapView } from "@/components/map/DesktopMapView";
 import { DesktopProfileView } from "@/components/profile/DesktopProfileView";
 import { DeleteAccountModal } from "@/components/profile/DeleteAccountModal";
-import { OfflineMapModal } from "@/components/map/OfflineMapModal";
-import { getMetadata } from "@/lib/offline/db";
 import { EmergencyWarningView } from "@/components/emergency/EmergencyWarningView";
 import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { CreateReportModal } from "@/components/community/CreateReportModal";
@@ -60,7 +58,6 @@ export default function SiagaKitaApp() {
   const [currentLocation, setCurrentLocation] = useState<string>("Kota Bandung");
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [isMapOfflineDownloaded, setIsMapOfflineDownloaded] = useState<boolean>(false);
   const [showRoute, setShowRoute] = useState<boolean>(false);
   const [mapLayerTab, setMapLayerTab] = useState<"evakuasi" | "rute" | "laporan">("evakuasi");
   const [communityReports, setCommunityReports] = useState<CommunityReport[]>(mockCommunityReports);
@@ -78,19 +75,6 @@ export default function SiagaKitaApp() {
       setSelectedPoint(currentEvacuationPoints[0]);
     }
   }, [currentEvacuationPoints]);
-
-  // Periksa apakah peta offline pernah diunduh dan tersimpan di IndexedDB
-  useEffect(() => {
-    let mounted = true;
-    getMetadata("offline_map_downloaded").then((meta) => {
-      if (mounted && meta) {
-        setIsMapOfflineDownloaded(true);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // BMKG Weather States
   const [currentWeather, setCurrentWeather] = useState<WeatherCurrent>(mockCurrentWeather);
@@ -342,7 +326,6 @@ export default function SiagaKitaApp() {
   // Modals & Overlays
   const [showLocationModal, setShowLocationModal] = useState<boolean>(false);
   const [showEmergencyFullscreen, setShowEmergencyFullscreen] = useState<boolean>(false);
-  const [showOfflineModal, setShowOfflineModal] = useState<boolean>(false);
   const [showCreateReportModal, setShowCreateReportModal] = useState<boolean>(false);
   const [showLoginReminderModal, setShowLoginReminderModal] = useState<boolean>(false);
   const [showSayaAmanModal, setShowSayaAmanModal] = useState<boolean>(false);
@@ -665,7 +648,6 @@ export default function SiagaKitaApp() {
                   onNavigateTab={(tab) => setMobileTab(tab)}
                   onOpenWarningDetail={() => setMobileSubScreen("peringatan")}
                   onOpenSayaAman={() => setShowSayaAmanModal(true)}
-                  onOpenOfflineMap={() => setShowOfflineModal(true)}
                   onViewOnMap={(lat, lng) => {
                     if (typeof lat === "number" && typeof lng === "number") {
                       setUserCoords({ lat, lng });
@@ -699,7 +681,6 @@ export default function SiagaKitaApp() {
               ) : (
                 <MobileProfileView
                   currentLocation={currentLocation}
-                  onOpenOfflineManager={() => setShowOfflineModal(true)}
                 />
               )}
             </div>
@@ -795,8 +776,6 @@ export default function SiagaKitaApp() {
                     }}
                     onSelectPoint={handleSelectEvacuationPoint}
                     onStartRouteNavigation={handleStartRouteNavigation}
-                    onOpenOfflineModal={() => setShowOfflineModal(true)}
-                    isMapOfflineDownloaded={isMapOfflineDownloaded}
                     userCoords={userCoords}
                     latestEarthquake={latestEarthquake}
                     onUpdateCoords={setUserCoords}
@@ -867,7 +846,6 @@ export default function SiagaKitaApp() {
                     isGuest={isGuest}
                     currentLocation={currentLocation}
                     onLogout={() => logout()}
-                    onOpenOfflineModal={() => setShowOfflineModal(true)}
                     onOpenNotifications={() => setShowPushNotification(true)}
                     onOpenDeleteModal={() => setShowDeleteAccountModal(true)}
                   />
@@ -907,15 +885,6 @@ export default function SiagaKitaApp() {
       <LoginReminderOverlay
         isOpen={showLoginReminderModal}
         onClose={() => setShowLoginReminderModal(false)}
-      />
-
-      <OfflineMapModal
-        isOpen={showOfflineModal}
-        onClose={() => setShowOfflineModal(false)}
-        isDownloaded={isMapOfflineDownloaded}
-        onDownloadComplete={() => setIsMapOfflineDownloaded(true)}
-        onRemoveDownload={() => setIsMapOfflineDownloaded(false)}
-        points={currentEvacuationPoints}
       />
 
       {/* Web Push Notification — untuk risiko sedang (waspada) */}

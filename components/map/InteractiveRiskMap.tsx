@@ -288,7 +288,7 @@ export function InteractiveRiskMap({
               const bounds = new maplibregl.LngLatBounds();
               roadCoords.forEach((c: [number, number]) => bounds.extend(c));
               mapRef.current.fitBounds(bounds, {
-                padding: 70,
+                padding: { top: 185, bottom: 90, left: 80, right: 80 },
                 maxZoom: 15.5,
                 duration: 1000,
               });

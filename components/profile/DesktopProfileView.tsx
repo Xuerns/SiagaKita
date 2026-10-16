@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import {
-  DownloadCloud,
   ShieldCheck,
   AlertTriangle,
   LogIn,
@@ -16,7 +15,6 @@ export interface DesktopProfileViewProps {
   isGuest: boolean;
   currentLocation: string;
   onLogout: () => void;
-  onOpenOfflineModal: () => void;
   onOpenNotifications: () => void;
   onOpenDeleteModal: () => void;
 }
@@ -26,7 +24,6 @@ export function DesktopProfileView({
   isGuest,
   currentLocation,
   onLogout,
-  onOpenOfflineModal,
   onOpenNotifications,
   onOpenDeleteModal,
 }: DesktopProfileViewProps) {
@@ -118,36 +115,19 @@ export function DesktopProfileView({
         </div>
       </div>
 
-      {/* LAYANAN OFFLINE & NOTIFIKASI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-[#17211D]">Penyimpanan PWA Offline</h3>
-          <p className="text-xs text-[#68756E]">
-            Data peta vektor (PMTiles) dan checklist Tas Siaga disimpan secara lokal di peramban Anda untuk akses darurat tanpa internet.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenOfflineModal}
-            className="py-2 px-4 rounded-[10px] bg-[#176B4D] hover:bg-[#12533B] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <DownloadCloud className="w-4 h-4" />
-            <span>Kelola Peta Offline</span>
-          </button>
-        </div>
-
-        <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
-          <p className="text-xs text-[#68756E]">
-            Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenNotifications}
-            className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
-          >
-            Tes Kirim Notifikasi Push
-          </button>
-        </div>
+      {/* LAYANAN NOTIFIKASI DARURAT */}
+      <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
+        <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
+        <p className="text-xs text-[#68756E]">
+          Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
+        </p>
+        <button
+          type="button"
+          onClick={onOpenNotifications}
+          className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
+        >
+          Tes Kirim Notifikasi Push
+        </button>
       </div>
 
       {/* ZONA BAHAYA: HAK PEMUSNAHAN DATA PRIBADI (UU PDP NO. 27 TAHUN 2022) */}

@@ -10,7 +10,6 @@ import {
   Compass, 
   CheckSquare, 
   UserCheck, 
-  DownloadCloud,
   ChevronRight
 } from "lucide-react";
 import { WeatherCurrent, ActiveWarning, ForecastDay, EarthquakeData } from "@/types";
@@ -26,7 +25,6 @@ interface MobileHomeViewProps {
   onNavigateTab: (tab: MobileTab) => void;
   onOpenWarningDetail: () => void;
   onOpenSayaAman: () => void;
-  onOpenOfflineMap: () => void;
   onViewOnMap?: (lat: number, lng: number) => void;
 }
 
@@ -38,7 +36,6 @@ export function MobileHomeView({
   onNavigateTab,
   onOpenWarningDetail,
   onOpenSayaAman,
-  onOpenOfflineMap,
   onViewOnMap,
 }: MobileHomeViewProps) {
   const { user } = useAuth();
@@ -216,25 +213,6 @@ export function MobileHomeView({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* 6. Offline Map Shortcut */}
-      <div
-        onClick={onOpenOfflineMap}
-        className="bg-[#104A35] text-white rounded-[16px] p-3.5 flex items-center justify-between cursor-pointer shadow-md"
-      >
-        <div className="flex items-center gap-2.5">
-          <DownloadCloud className="w-5 h-5 text-emerald-300" />
-          <div>
-            <span className="text-xs font-bold block">Peta Siap Akses Offline</span>
-            <span className="text-[10px] text-emerald-100/80 block">
-              Simpan data peta sebelum sinyal hilang
-            </span>
-          </div>
-        </div>
-        <span className="text-[11px] font-bold bg-white text-[#176B4D] px-2.5 py-1 rounded-full">
-          Unduh
-        </span>
       </div>
     </div>
   );
