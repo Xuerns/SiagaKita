@@ -144,14 +144,6 @@ export function AuthLayout({ initialMode = "login" }: AuthLayoutProps) {
         <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between bg-white">
           {/* Top Actions: Back to Home */}
           <div className="flex items-center justify-between mb-4">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#68756E] hover:text-[#176B4D] transition-colors py-1 px-2.5 rounded-[8px] hover:bg-[#F5F7F6]"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Kembali ke Beranda</span>
-            </Link>
-
             {/* Mobile Brand indicator */}
             <div className="flex lg:hidden items-center gap-2">
               <div className="w-7 h-7 rounded-[8px] bg-[#176B4D] flex items-center justify-center text-white">

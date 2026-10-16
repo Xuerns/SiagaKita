@@ -14,6 +14,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { getUserInitials, getUserRoleLabel } from "@/lib/utils";
+import {
+  checkPushSubscriptionStatus,
+  subscribeUserToPush,
+  unsubscribeUserFromPush,
+} from "@/lib/push-client";
 
 interface MobileProfileViewProps {
   currentLocation: string;
@@ -25,9 +30,26 @@ export function MobileProfileView({
   onOpenOfflineManager,
 }: MobileProfileViewProps) {
   const { user, isGuest, logout, deleteAccount } = useAuth();
-  const [pushEnabled, setPushEnabled] = useState(true);
+  const [pushStatus, setPushStatus] = useState<"subscribed" | "unsubscribed" | "denied" | "unsupported">("unsubscribed");
+  const [isPushLoading, setIsPushLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  React.useEffect(() => {
+    checkPushSubscriptionStatus().then(setPushStatus);
+  }, []);
+
+  const handleTogglePush = async () => {
+    setIsPushLoading(true);
+    if (pushStatus === "subscribed") {
+      const res = await unsubscribeUserFromPush();
+      if (res.success) setPushStatus("unsubscribed");
+    } else {
+      const res = await subscribeUserToPush();
+      if (res.success) setPushStatus("subscribed");
+    }
+    setIsPushLoading(false);
+  };
 
   const initials = getUserInitials(user?.nama, "TM");
   const roleLabel = getUserRoleLabel(user, isGuest);
@@ -110,18 +132,25 @@ export function MobileProfileView({
             <Bell className="w-4 h-4 text-[#176B4D]" />
             <div>
               <span className="font-semibold text-[#17211D] block">Notifikasi Web Push</span>
-              <span className="text-[10px] text-[#68756E]">Peringatan dini Siaga & Awas</span>
+              <span className="text-[10px] text-[#68756E]">
+                {pushStatus === "subscribed"
+                  ? "Aktif · Peringatan Siaga & Awas"
+                  : pushStatus === "denied"
+                  ? "Izin Browser Ditolak"
+                  : "Ketuk untuk mengaktifkan"}
+              </span>
             </div>
           </div>
           <button
-            onClick={() => setPushEnabled(!pushEnabled)}
+            onClick={handleTogglePush}
+            disabled={isPushLoading || pushStatus === "unsupported"}
             className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
-              pushEnabled ? "bg-[#176B4D]" : "bg-[#CDD7D1]"
+              pushStatus === "subscribed" ? "bg-[#176B4D]" : "bg-[#CDD7D1]"
             }`}
           >
             <span
               className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                pushEnabled ? "right-1" : "left-1"
+                pushStatus === "subscribed" ? "right-1" : "left-1"
               }`}
             />
           </button>

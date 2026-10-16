@@ -220,7 +220,7 @@ export function filterSensitiveProfile<T extends Record<string, any>>(
   const sanitized = { ...profile };
 
   // Data kerentanan (lansia, sakit, disabilitas) hanya boleh tampil jika
-  // pemilik memberi izin atau diakses oleh akun relawan/admin berwenang
+  // pemilik memberi izin eksplisit atau diakses oleh kontak darurat terotorisasi
   if (!isOwnerOrStaff && (!sanitized.vulnerability_consent)) {
     delete sanitized.vulnerability;
     delete sanitized.emergency_contacts;

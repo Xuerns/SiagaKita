@@ -28,7 +28,7 @@ export async function GET() {
       }
     }
 
-    // Statistik agregat keselamatan untuk ringkasan relawan/dashboard
+    // Statistik agregat keselamatan untuk ringkasan komunitas/lingkungan
     const adminClient = createAdminClient();
     const { count: amanCount } = await adminClient
       .from('safety_status')
@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
       pesan:
         status === 'aman'
-          ? 'Status Anda berhasil dicatat AMAN di database dan dapat dipantau oleh relawan posko.'
-          : 'Panggilan DARURAT BUTUH BANTUAN Anda telah dicatat di database! Koordinat Anda diprioritaskan oleh relawan terdekat.',
+          ? 'Status Anda berhasil dicatat AMAN di database dan dapat dipantau oleh sesama warga serta keluarga.'
+          : 'Panggilan DARURAT BUTUH BANTUAN Anda telah dicatat di database! Koordinat Anda diprioritaskan untuk bantuan evakuasi terdekat.',
     });
   } catch (error) {
     console.error('API POST /api/status-aman Error:', error);

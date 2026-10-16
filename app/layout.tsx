@@ -6,8 +6,10 @@ import { cn } from "@/lib/utils";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { IosInstallPromptModal } from "@/components/pwa/IosInstallPromptModal";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+
 
 export const metadata: Metadata = {
   title: "SiagaKita — Kesiapsiagaan Bencana & Peta Evakuasi",
@@ -54,10 +56,12 @@ export default function RootLayout({
       </head>
       <body>
         <ServiceWorkerRegister />
+        <IosInstallPromptModal />
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>
         </TooltipProvider>
       </body>
+
     </html>
   );
 }

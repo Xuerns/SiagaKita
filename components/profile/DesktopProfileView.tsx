@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   DownloadCloud,
@@ -8,10 +8,19 @@ import {
   AlertTriangle,
   LogIn,
   LogOut,
+  Bell,
+  BellRing,
+  Loader2,
 } from "lucide-react";
 import { AuthUser } from "@/lib/context/AuthContext";
+import {
+  checkPushSubscriptionStatus,
+  subscribeUserToPush,
+  unsubscribeUserFromPush,
+} from "@/lib/push-client";
 
 export interface DesktopProfileViewProps {
+
   user: AuthUser | null;
   isGuest: boolean;
   currentLocation: string;
@@ -32,6 +41,29 @@ export function DesktopProfileView({
 }: DesktopProfileViewProps) {
   const isAnonymousOrGuest = isGuest || user?.is_anonymous;
   const userInitials = user?.nama ? user.nama.trim().slice(0, 2).toUpperCase() : "WG";
+
+  const [pushStatus, setPushStatus] = useState<"unsupported" | "denied" | "subscribed" | "unsubscribed">("unsubscribed");
+  const [isPushLoading, setIsPushLoading] = useState(false);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkPushSubscriptionStatus().then(setPushStatus);
+  }, []);
+
+  const handleTogglePush = async () => {
+    setIsPushLoading(true);
+    setPushMsg(null);
+    if (pushStatus === "subscribed") {
+      const res = await unsubscribeUserFromPush();
+      setPushMsg(res.message);
+      if (res.success) setPushStatus("unsubscribed");
+    } else {
+      const res = await subscribeUserToPush();
+      setPushMsg(res.message);
+      if (res.success) setPushStatus("subscribed");
+    }
+    setIsPushLoading(false);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl pb-12">
@@ -136,17 +168,72 @@ export function DesktopProfileView({
         </div>
 
         <div className="bg-white rounded-[16px] border border-[#E6EBE8] p-5 shadow-sm space-y-3">
-          <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#17211D]">Notifikasi Peringatan Darurat (Web Push)</h3>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                pushStatus === "subscribed"
+                  ? "bg-[#E5F5EA] text-[#176B4D]"
+                  : pushStatus === "denied"
+                  ? "bg-[#FEE2E2] text-[#DC2626]"
+                  : "bg-[#F5F7F6] text-[#68756E]"
+              }`}
+            >
+              {pushStatus === "subscribed"
+                ? "Aktif (Terhubung)"
+                : pushStatus === "denied"
+                ? "Izin Ditolak"
+                : pushStatus === "unsupported"
+                ? "Tidak Didukung"
+                : "Belum Aktif"}
+            </span>
+          </div>
+
           <p className="text-xs text-[#68756E]">
-            Menerima siaran push darurat saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di sekitar wilayah Anda.
+            Menerima siaran push darurat VAPID saat terjadi potensi banjir bandang, gempa, atau cuaca ekstrem di wilayah Anda langsung ke perangkat.
           </p>
-          <button
-            type="button"
-            onClick={onOpenNotifications}
-            className="py-2 px-4 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
-          >
-            Tes Kirim Notifikasi Push
-          </button>
+
+          {pushMsg && (
+            <p className="text-[11px] font-medium text-[#176B4D] bg-[#E5F5EA] p-2 rounded-[8px]">
+              {pushMsg}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleTogglePush}
+              disabled={isPushLoading || pushStatus === "unsupported"}
+              className={`py-2 px-4 rounded-[10px] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                pushStatus === "subscribed"
+                  ? "bg-[#F8FAF9] hover:bg-[#F1F4F2] border border-[#CDD7D1] text-[#68756E]"
+                  : "bg-[#176B4D] hover:bg-[#12533B] text-white shadow-sm"
+              }`}
+            >
+              {isPushLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : pushStatus === "subscribed" ? (
+                <Bell className="w-4 h-4" />
+              ) : (
+                <BellRing className="w-4 h-4" />
+              )}
+              <span>
+                {isPushLoading
+                  ? "Memproses..."
+                  : pushStatus === "subscribed"
+                  ? "Nonaktifkan Push"
+                  : "Aktifkan Web Push"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="py-2 px-3.5 rounded-[10px] bg-[#F8FAF9] hover:bg-[#F1F8F3] border border-[#CDD7D1] text-[#176B4D] text-xs font-bold cursor-pointer transition-colors"
+            >
+              Tes Suara & Banner
+            </button>
+          </div>
         </div>
       </div>
 

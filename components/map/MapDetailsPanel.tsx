@@ -192,7 +192,7 @@ export function MapDetailsPanel({
             </h4>
             <span className="text-[10px] font-semibold text-[#176B4D]">
               {isGpsActive && typeof evacuationPoints[0]?.distanceKm === "number"
-                ? "🎯 Dari GPS Anda"
+                ? "Dari GPS Anda"
                 : "Terverifikasi BPBD"}
             </span>
           </div>

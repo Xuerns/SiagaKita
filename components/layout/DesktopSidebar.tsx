@@ -24,6 +24,7 @@ import {
   SidebarRail,
   SidebarSeparator,
   SidebarContext,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { SidebarLogo } from "@/components/layout/SidebarLogo";
 import { SidebarUserMenu } from "@/components/layout/SidebarUserMenu";
@@ -59,6 +60,12 @@ function InnerDesktopSidebar({
   className,
   onTestRiskAlert,
 }: DesktopSidebarProps) {
+  const { isMobile } = useSidebar();
+
+  // Pada layar mobile, sidebar ditiadakan dan digantikan oleh MobileBottomNav
+  if (isMobile) {
+    return null;
+  }
 
   const navItems: { id: NavTab; label: string; icon: React.ElementType; badge?: number }[] = [
     { id: "beranda", label: "Beranda", icon: Home },

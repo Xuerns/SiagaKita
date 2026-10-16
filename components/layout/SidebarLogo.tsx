@@ -26,19 +26,19 @@ export function SidebarLogo({ onClick, src, className }: SidebarLogoProps) {
         className
       )}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#176B4D] text-emerald-300 shadow-sm">
+      <span className="flex size-8 shrink-0 items-center justify-center text-[#176B4D]">
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="" className="size-full rounded-[10px] object-cover" />
+          <img src={src} alt="" className="size-full object-contain" />
         ) : (
           <svg
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.2"
+            strokeWidth="2.3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="size-5 text-emerald-300"
+            className="size-7 text-[#176B4D]"
           >
             <path d="M2.5 14.5L8.5 6.5C9.2 5.5 10.3 5.5 11 6.5L14.5 12L16.5 9.5C17.1 8.7 18.1 8.7 18.7 9.5L21.5 14" />
             <path d="M2.5 18.5C5 16.8 7.5 16.8 10 18.5C12.5 20.2 15 20.2 17.5 18.5C19 17.5 20.2 17.5 21.5 18" />

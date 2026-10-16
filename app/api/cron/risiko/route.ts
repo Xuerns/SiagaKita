@@ -130,6 +130,26 @@ async function handleCronRisiko(request: NextRequest) {
         if (!alertErr && newAlert) {
           alertsCreated.push(newAlert);
         }
+
+        // 5. Kirim Web Push Notification broadcast ke seluruh warga terdaftar di wilayah ini
+        try {
+          const { sendPushToRegion } = await import('@/lib/push');
+          await sendPushToRegion(region.id, {
+            title: `PERINGATAN ${calculated.level.toUpperCase()} · BANJIR`,
+            body: `Peringatan risiko banjir di ${region.nama} (Skor: ${calculated.skor}/100). Ketuk untuk melihat rute evakuasi terdekat.`,
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            data: {
+              url: '/',
+              level: calculated.level,
+              hazard: 'banjir',
+              regionId: region.id,
+              alertId: newAlert?.id,
+            },
+          });
+        } catch (pushErr) {
+          console.warn(`[CronRisiko] Gagal mengirim push notifikasi wilayah ${region.nama}:`, pushErr);
+        }
       }
 
       executionResults.push({
@@ -143,6 +163,7 @@ async function handleCronRisiko(request: NextRequest) {
         rekomendasi: calculated.rekomendasi,
       });
     }
+
 
     return NextResponse.json({
       success: true,

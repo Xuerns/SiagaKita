@@ -34,6 +34,7 @@ import { NotificationBanner } from "@/components/ui/NotificationBanner";
 import { RiskAlertModal } from "@/components/ui/RiskAlertModal";
 import { LocationSelectorModal } from "@/components/location/LocationSelectorModal";
 import { useAuth } from "@/lib/context/AuthContext";
+import { DashboardShellSkeleton } from "@/components/skeletons";
 import { LoginReminderOverlay } from "@/components/auth/LoginReminderOverlay";
 import {
   mockCurrentWeather,
@@ -603,6 +604,11 @@ export default function SiagaKitaApp() {
     );
   }
 
+  // Initial loading state while verifying user session
+  if (isAuthLoading) {
+    return <DashboardShellSkeleton />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F7F6] text-[#17211D]">
 
@@ -755,7 +761,7 @@ export default function SiagaKitaApp() {
               />
 
               {/* Main Page Body */}
-              <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+              <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
                 {/* SCREEN A: DESKTOP BERANDA (DASHBOARD) */}
                 {currentTab === "beranda" && (
                   <DesktopHomeView
@@ -875,6 +881,19 @@ export default function SiagaKitaApp() {
               </main>
             </div>
           </div>
+
+          {/* Mobile Bottom Navigation (Hanya tampil pada viewport mobile < md) */}
+          <MobileBottomNav
+            currentTab={currentTab}
+            onSelectTab={(tab) => {
+              if (tab === "tokens") {
+                setViewportMode("tokens");
+              } else {
+                setCurrentTab(tab);
+              }
+            }}
+            warningCount={warningDismissed ? 0 : (currentRisk.level === "aman" ? 0 : 1)}
+          />
         </SidebarProvider>
       )}
 
